@@ -1,6 +1,8 @@
 [
   {
     "name": "The Literary Coffee House 'Citadel'",
+    "type": "coffee",
+    "partener": true,
     "address": "Str. Academiei, Nr. 15, Bucharest",
     "coordinates": {
       "lat": 44.4363,
@@ -12,6 +14,8 @@
   },
   {
     "name": "Restaurant 'The Old Inn'",
+    "type": "restaurant",
+    "partener": false,
     "address": "Piața Unirii, Nr. 4, Cluj-Napoca",
     "coordinates": {
       "lat": 46.7709,
@@ -23,6 +27,8 @@
   },
   {
     "name": "The Global Wok Bistro",
+    "type": "fast food",
+    "partener": true,
     "address": "Bulevardul Eroilor, Nr. 8, Timișoara",
     "coordinates": {
       "lat": 45.7537,
@@ -34,6 +40,8 @@
   },
   {
     "name": "Café 'New World'",
+    "type": "coffee",
+    "partener": false,
     "address": "Str. Lăpușneanu, Nr. 12, Iași",
     "coordinates": {
       "lat": 47.1601,
@@ -45,6 +53,8 @@
   },
   {
     "name": "Pizzeria 'Il Drago'",
+    "type": "restaurant",
+    "partener": true,
     "address": "Str. Nicolae Bălcescu, Nr. 20, Brașov",
     "coordinates": {
       "lat": 45.6429,
@@ -56,6 +66,8 @@
   },
   {
     "name": "Vegan Restaurant 'The Green Garden'",
+    "type": "restaurant",
+    "partener": true,
     "address": "Splaiul Independenței, Nr. 300, Bucharest",
     "coordinates": {
       "lat": 44.4379,
@@ -67,9 +79,11 @@
   },
   {
     "name": "Coffee Shop 'By The Faculty'",
+    "type": "coffee",
+    "partener": false,
     "address": "Str. Observatorului, Nr. 17, Cluj-Napoca",
     "coordinates": {
-      "lat": 46.7570,
+      "lat": 46.757,
       "long": 23.5786
     },
     "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
@@ -78,6 +92,8 @@
   },
   {
     "name": "Burger Shack",
+    "type": "fast food",
+    "partener": false,
     "address": "Calea Moșilor, Nr. 250, Bucharest",
     "coordinates": {
       "lat": 44.4449,
@@ -89,6 +105,8 @@
   },
   {
     "name": "Tea House 'Sunset'",
+    "type": "altele",
+    "partener": true,
     "address": "Str. George Enescu, Nr. 3, Sibiu",
     "coordinates": {
       "lat": 45.7958,
@@ -100,6 +118,8 @@
   },
   {
     "name": "Restaurant Pescaresc 'The Sea'",
+    "type": "restaurant",
+    "partener": false,
     "address": "Bulevardul Mamaia, Nr. 200, Constanța",
     "coordinates": {
       "lat": 44.1751,
@@ -111,6 +131,8 @@
   },
   {
     "name": "Bistro 'At The Forest'",
+    "type": "restaurant",
+    "partener": false,
     "address": "Aleea Parcului, Nr. 7, Oradea",
     "coordinates": {
       "lat": 47.0506,
@@ -122,6 +144,8 @@
   },
   {
     "name": "Gaming Coffee Shop 'Restart'",
+    "type": "coffee",
+    "partener": true,
     "address": "Strada Vasile Alecsandri, Nr. 5, Galați",
     "coordinates": {
       "lat": 45.4385,
@@ -133,10 +157,12 @@
   },
   {
     "name": "Trattoria 'Bella Vita'",
+    "type": "restaurant",
+    "partener": true,
     "address": "Bulevardul Carol I, Nr. 18, Craiova",
     "coordinates": {
       "lat": 44.3297,
-      "long": 23.8000
+      "long": 23.8
     },
     "image_url": "https://images.unsplash.com/photo-1462331940025-496dfbfc7564",
     "short_description": "Homemade pasta and Italian wines. Mediterranean atmosphere.",
@@ -144,9 +170,11 @@
   },
   {
     "name": "Bread and Coffee",
+    "type": "coffee",
+    "partener": false,
     "address": "Strada Republicii, Nr. 10, Ploiești",
     "coordinates": {
-      "lat": 44.9450,
+      "lat": 44.945,
       "long": 26.0315
     },
     "image_url": "https://images.unsplash.com/photo-1435224654926-ecc9f7fa028c",
@@ -155,6 +183,8 @@
   },
   {
     "name": "Fast-Food 'Döner King'",
+    "type": "fast food",
+    "partener": false,
     "address": "Calea Șagului, Nr. 55, Timișoara",
     "coordinates": {
       "lat": 45.7275,
@@ -166,6 +196,8 @@
   },
   {
     "name": "Restaurant 'The Citadel'",
+    "type": "restaurant",
+    "partener": true,
     "address": "Strada Mureșenilor, Nr. 1, Târgu Mureș",
     "coordinates": {
       "lat": 46.5459,
@@ -177,6 +209,8 @@
   },
   {
     "name": "Smoothie Bar 'Energy'",
+    "type": "altele",
+    "partener": false,
     "address": "Bulevardul 1 Decembrie 1918, Nr. 100, Alba Iulia",
     "coordinates": {
       "lat": 46.0683,
@@ -188,10 +222,12 @@
   },
   {
     "name": "Restaurant 'Grandma's House'",
+    "type": "restaurant",
+    "partener": true,
     "address": "Strada Republicii, Nr. 45, Brașov",
     "coordinates": {
       "lat": 45.6425,
-      "long": 25.5880
+      "long": 25.588
     },
     "image_url": "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
     "short_description": "Fixed (lunch) menu, cheap and tasty, just like home.",
@@ -199,10 +235,12 @@
   },
   {
     "name": "Irish Pub 'The Shamrock'",
+    "type": "bar",
+    "partener": false,
     "address": "Strada Universității, Nr. 9, Iași",
     "coordinates": {
       "lat": 47.1633,
-      "long": 27.5790
+      "long": 27.579
     },
     "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
     "short_description": "Craft beer, quiz nights, and live sports. Popular student spot.",
@@ -210,9 +248,11 @@
   },
   {
     "name": "Coffee Shop 'Zen'",
+    "type": "coffee",
+    "partener": true,
     "address": "Strada Dorobanților, Nr. 80, Cluj-Napoca",
     "coordinates": {
-      "lat": 46.7770,
+      "lat": 46.777,
       "long": 23.6067
     },
     "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",

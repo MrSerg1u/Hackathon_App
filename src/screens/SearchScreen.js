@@ -4,6 +4,7 @@ import {
   FlatList,
   Image,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,43 +13,73 @@ import {
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 
-// Importăm datele din fișierul JSON creat
+// Importăm datele din fișierul JSON (asigură-te că path-ul e corect)
 import locationsData from "../../locatii.json";
 
-export default function SearchScreen() {
-  const { colors, theme } = useTheme();
+// Categoriile disponibile pentru filtrare (trebuie să corespundă cu 'type' din JSON)
+const CATEGORIES = [
+  "Toate",
+  "restaurant",
+  "coffee",
+  "fast food",
+  "bar",
+  "altele",
+];
 
-  // State-uri
+export default function SearchScreen() {
+  const { colors } = useTheme();
+
+  // --- STATE-URI ---
   const [searchText, setSearchText] = useState("");
   const [filteredData, setFilteredData] = useState(locationsData);
+
+  // State pentru filtre
+  const [selectedCategory, setSelectedCategory] = useState("Toate");
+  const [filterRatingHigh, setFilterRatingHigh] = useState(false); // True = Doar > 4.0
   const [sortBy, setSortBy] = useState("default"); // 'default', 'rating', 'name'
 
   // State pentru Modal
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
 
-  // Funcția de căutare și sortare
+  // --- LOGICA DE FILTRARE ȘI SORTARE ---
   useEffect(() => {
-    let data = locationsData.filter((item) =>
-      item.name.toLowerCase().includes(searchText.toLowerCase())
-    );
+    let data = locationsData;
 
+    // 1. Filtrare după Text (Căutare)
+    if (searchText) {
+      data = data.filter((item) =>
+        item.name.toLowerCase().includes(searchText.toLowerCase())
+      );
+    }
+
+    // 2. Filtrare după Categorie (Tip)
+    if (selectedCategory !== "Toate") {
+      data = data.filter((item) => item.type === selectedCategory);
+    }
+
+    // 3. Filtrare după Rating (> 4.0)
+    if (filterRatingHigh) {
+      data = data.filter((item) => item.rating > 4.0);
+    }
+
+    // 4. Sortare
     if (sortBy === "rating") {
-      data.sort((a, b) => b.rating - a.rating); // Descrescător după rating
+      // Facem o copie ca să nu mutăm array-ul original în timpul sortării
+      data = [...data].sort((a, b) => b.rating - a.rating);
     } else if (sortBy === "name") {
-      data.sort((a, b) => a.name.localeCompare(b.name)); // Alfabetic
+      data = [...data].sort((a, b) => a.name.localeCompare(b.name));
     }
 
     setFilteredData(data);
-  }, [searchText, sortBy]);
+  }, [searchText, selectedCategory, filterRatingHigh, sortBy]);
 
-  // Funcția pentru deschiderea modalului
   const openModal = (location) => {
     setSelectedLocation(location);
     setModalVisible(true);
   };
 
-  // Renderizarea unui singur card (item)
+  // --- RENDER ITEM (CARDUL) ---
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -61,14 +92,24 @@ export default function SearchScreen() {
       {/* Imaginea din stânga */}
       <Image source={{ uri: item.image_url }} style={styles.cardImage} />
 
-      {/* Textul din dreapta */}
+      {/* Partea dreaptă (Info) */}
       <View style={styles.cardInfo}>
-        <Text
-          style={[styles.cardTitle, { color: colors.text }]}
-          numberOfLines={1}
-        >
-          {item.name}
-        </Text>
+        {/* Header Card: Titlu + Badge Partener */}
+        <View style={styles.cardHeaderRow}>
+          <Text
+            style={[styles.cardTitle, { color: colors.text, flex: 1 }]}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          {/* BADGE PARTENER (Sus Dreapta) */}
+          {item.partener && (
+            <View style={styles.partnerBadge}>
+              <Text style={styles.partnerText}>PARTENER</Text>
+            </View>
+          )}
+        </View>
+
         <Text
           style={[styles.cardDescription, { color: colors.subtext }]}
           numberOfLines={2}
@@ -76,11 +117,19 @@ export default function SearchScreen() {
           {item.short_description}
         </Text>
 
-        {/* Rating Badge */}
-        <View style={styles.ratingContainer}>
-          <Ionicons name="star" size={14} color="#FFD700" />
-          <Text style={[styles.ratingText, { color: colors.text }]}>
-            {item.rating} / 5
+        {/* Footer Card: Rating + Tip Locație */}
+        <View style={styles.cardFooterRow}>
+          {/* Rating */}
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={14} color="#FFD700" />
+            <Text style={[styles.ratingText, { color: colors.text }]}>
+              {item.rating} / 5
+            </Text>
+          </View>
+
+          {/* TIP LOCAȚIE (Jos Dreapta) */}
+          <Text style={[styles.typeLabel, { color: colors.subtext }]}>
+            {item.type.toUpperCase()}
           </Text>
         </View>
       </View>
@@ -89,10 +138,10 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header Titlu */}
+      {/* --- HEADER --- */}
       <Text style={[styles.headerTitle, { color: colors.text }]}>Search</Text>
 
-      {/* Zona de Search Input */}
+      {/* --- INPUT CĂUTARE --- */}
       <View
         style={[
           styles.searchContainer,
@@ -110,7 +159,7 @@ export default function SearchScreen() {
         />
         <TextInput
           style={{ flex: 1, color: colors.text, fontSize: 16 }}
-          placeholder="Search by name..."
+          placeholder="Caută locații..."
           placeholderTextColor={colors.subtext}
           value={searchText}
           onChangeText={setSearchText}
@@ -122,50 +171,112 @@ export default function SearchScreen() {
         )}
       </View>
 
-      {/* Zona de Filtre / Sortare */}
-      <View style={styles.filtersContainer}>
+      {/* --- ZONA FILTRE (Scroll Orizontal) --- */}
+      <View style={{ marginBottom: 10 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 5 }}
+        >
+          {/* Buton Filtru Rating > 4 */}
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              filterRatingHigh && {
+                backgroundColor: "#FFD700",
+                borderColor: "#FFD700",
+              },
+              !filterRatingHigh && { borderColor: colors.border },
+            ]}
+            onPress={() => setFilterRatingHigh(!filterRatingHigh)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                filterRatingHigh ? { color: "#000" } : { color: colors.text },
+              ]}
+            >
+              Rating &gt; 4.0 ⭐
+            </Text>
+          </TouchableOpacity>
+
+          {/* Separator mic vizual */}
+          <View
+            style={{
+              width: 1,
+              height: "80%",
+              backgroundColor: colors.border,
+              marginHorizontal: 8,
+              alignSelf: "center",
+            }}
+          />
+
+          {/* Categorii */}
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[
+                styles.filterPill,
+                selectedCategory === cat && {
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary,
+                },
+                selectedCategory !== cat && { borderColor: colors.border },
+              ]}
+              onPress={() => setSelectedCategory(cat)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  selectedCategory === cat
+                    ? { color: "#fff" }
+                    : { color: colors.text },
+                ]}
+              >
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Butoane Sortare (Opțional, le putem păstra sub filtre sau scoate) */}
+      <View style={[styles.sortContainer, { marginBottom: 15 }]}>
+        <Text style={{ color: colors.subtext, marginRight: 10, fontSize: 12 }}>
+          Sortează:
+        </Text>
         <TouchableOpacity
-          style={[
-            styles.filterButton,
-            sortBy === "rating" && { backgroundColor: colors.primary },
-            { borderColor: colors.border },
-          ]}
           onPress={() => setSortBy(sortBy === "rating" ? "default" : "rating")}
         >
           <Text
-            style={[
-              styles.filterText,
-              sortBy === "rating" ? { color: "#fff" } : { color: colors.text },
-            ]}
+            style={{
+              color: sortBy === "rating" ? colors.primary : colors.text,
+              fontWeight: "bold",
+              marginRight: 15,
+            }}
           >
-            Sort: Rating ⭐
+            Rating {sortBy === "rating" ? "▼" : ""}
           </Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={[
-            styles.filterButton,
-            sortBy === "name" && { backgroundColor: colors.primary },
-            { borderColor: colors.border },
-          ]}
           onPress={() => setSortBy(sortBy === "name" ? "default" : "name")}
         >
           <Text
-            style={[
-              styles.filterText,
-              sortBy === "name" ? { color: "#fff" } : { color: colors.text },
-            ]}
+            style={{
+              color: sortBy === "name" ? colors.primary : colors.text,
+              fontWeight: "bold",
+            }}
           >
-            Sort: A-Z 🔤
+            Nume (A-Z) {sortBy === "name" ? "▼" : ""}
           </Text>
         </TouchableOpacity>
       </View>
 
       <Text style={[styles.resultsText, { color: colors.subtext }]}>
-        Showing {filteredData.length} results:
+        Rezultate: {filteredData.length}
       </Text>
 
-      {/* Lista de rezultate */}
+      {/* --- LISTA REZULTATE --- */}
       <FlatList
         data={filteredData}
         keyExtractor={(item, index) => index.toString()}
@@ -176,16 +287,17 @@ export default function SearchScreen() {
           <Text
             style={{
               textAlign: "center",
-              marginTop: 20,
+              marginTop: 40,
               color: colors.subtext,
+              fontSize: 16,
             }}
           >
-            Nu am găsit locații.
+            Nicio locație nu corespunde filtrelor.
           </Text>
         }
       />
 
-      {/* MODAL PENTRU DETALII */}
+      {/* --- MODAL DETALII --- */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -200,11 +312,23 @@ export default function SearchScreen() {
                   source={{ uri: selectedLocation.image_url }}
                   style={styles.modalImage}
                 />
-
                 <View style={styles.modalBody}>
                   <Text style={[styles.modalTitle, { color: colors.text }]}>
                     {selectedLocation.name}
                   </Text>
+                  {/* Dacă e partener, arătăm și în modal */}
+                  {selectedLocation.partener && (
+                    <Text
+                      style={{
+                        color: colors.primary,
+                        fontWeight: "bold",
+                        marginBottom: 10,
+                      }}
+                    >
+                      ⭐ LOCAȚIE PARTENER
+                    </Text>
+                  )}
+
                   <View
                     style={{
                       flexDirection: "row",
@@ -223,6 +347,16 @@ export default function SearchScreen() {
                       {selectedLocation.address}
                     </Text>
                   </View>
+
+                  <Text
+                    style={{
+                      color: colors.subtext,
+                      fontStyle: "italic",
+                      marginBottom: 5,
+                    }}
+                  >
+                    Tip: {selectedLocation.type.toUpperCase()}
+                  </Text>
 
                   <Text style={[styles.modalDesc, { color: colors.text }]}>
                     {selectedLocation.short_description}
@@ -243,7 +377,6 @@ export default function SearchScreen() {
                   </View>
                 </View>
 
-                {/* Buton Închidere */}
                 <TouchableOpacity
                   style={[
                     styles.closeButton,
@@ -263,7 +396,7 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 50 }, // Padding top pt safe area
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 50 },
   headerTitle: {
     fontSize: 22,
     fontWeight: "bold",
@@ -271,7 +404,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  // Search Bar
+  // Search
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -282,31 +415,30 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
-  // Filters
-  filtersContainer: {
-    flexDirection: "row",
-    marginBottom: 15,
-  },
-  filterButton: {
+  // Filters ScrollView
+  filterPill: {
     borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
     borderRadius: 20,
-    marginRight: 10,
+    marginRight: 8,
+    justifyContent: "center",
   },
-  filterText: { fontSize: 14, fontWeight: "600" },
+  filterText: { fontSize: 13, fontWeight: "600" },
+  sortContainer: { flexDirection: "row", alignItems: "center" },
 
   resultsText: { fontSize: 14, marginBottom: 10 },
 
-  // Card Styles
+  // --- CARD STYLES ---
   card: {
     flexDirection: "row",
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 15,
     overflow: "hidden",
-    elevation: 3, // Umbrita Android
-    shadowColor: "#000", // Umbra iOS
+    height: 110, // Înălțime fixă pentru consistență
+    elevation: 3,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -318,29 +450,67 @@ const styles = StyleSheet.create({
   },
   cardInfo: {
     flex: 1,
-    padding: 12,
-    justifyContent: "center",
+    padding: 10,
+    justifyContent: "space-between", // Distribuie conținutul (Header sus, Footer jos)
+  },
+
+  // Card Header (Titlu + Badge)
+  cardHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
-    marginBottom: 4,
+    marginRight: 5,
   },
+
+  // Badge Partener (Dreapta Sus)
+  partnerBadge: {
+    borderWidth: 1, // <--- Adaugă grosimea border-ului
+    borderColor: "#D4AF37", // <--- Culoare Galbenă (Auriu)
+    backgroundColor: "transparent", // <--- Fundal transparent (ca să se vadă border-ul)
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  partnerText: {
+    fontSize: 8,
+    color: "#D4AF37", // <--- Text Negru
+    fontWeight: "bold",
+  },
+
   cardDescription: {
-    fontSize: 13,
-    marginBottom: 8,
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  // Card Footer (Rating + Tip)
+  cardFooterRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 5,
   },
   ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "bold",
     marginLeft: 4,
   },
 
-  // Modal Styles
+  // Tip Locație (Dreapta Jos)
+  typeLabel: {
+    fontSize: 10,
+    fontWeight: "bold",
+    opacity: 0.8,
+  },
+
+  // --- MODAL STYLES ---
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
