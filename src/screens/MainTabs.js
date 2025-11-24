@@ -1,15 +1,25 @@
-import { Ionicons } from "@expo/vector-icons"; // Iconițe
+import { Ionicons } from "@expo/vector-icons";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useTheme } from "../context/ThemeContext"; // <--- Import
+
 import HomeScreen from "./HomeScreen";
 import ProfileScreen from "./ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
+  const { colors, theme } = useTheme(); // <--- Luăm culorile
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false, // Ascundem header-ul standard
+        headerShown: false,
+        tabBarActiveTintColor: colors.primary, // Culoarea activă din temă
+        tabBarInactiveTintColor: "gray",
+        tabBarStyle: {
+          backgroundColor: colors.card, // Fundalul barei
+          borderTopColor: colors.border, // Linia de sus
+        },
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === "Explore")
@@ -18,8 +28,6 @@ export default function MainTabs() {
             iconName = focused ? "person" : "person-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "gray",
       })}
     >
       <Tab.Screen name="Explore" component={HomeScreen} />

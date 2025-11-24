@@ -1,8 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainer,
+} from "@react-navigation/native"; // Importăm temele native
 import { createStackNavigator } from "@react-navigation/stack";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+
+// Importăm Contextul creat
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import MainTabs from "./src/screens/MainTabs";
@@ -10,19 +17,17 @@ import RegisterScreen from "./src/screens/RegisterScreen";
 
 const Stack = createStackNavigator();
 
-export default function App() {
+// Componenta care conține Navigația (separată pentru a putea folosi useTheme)
+const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState("Login");
+  const { theme } = useTheme(); // Luăm tema curentă pentru Navigație
 
   useEffect(() => {
     const checkUser = async () => {
       try {
         const user = await AsyncStorage.getItem("user_session");
-        if (user) {
-          setInitialRoute("MainTabs");
-        }
-      } catch (e) {
-        console.log(e);
+        if (user) setInitialRoute("MainTabs");
       } finally {
         setIsLoading(false);
       }
@@ -39,7 +44,8 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
+    // Setăm tema navigației ca să nu avem flash-uri albe în dark mode
+    <NavigationContainer theme={theme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack.Navigator initialRouteName={initialRoute}>
         <Stack.Screen
           name="Login"
@@ -58,5 +64,13 @@ export default function App() {
         />
       </Stack.Navigator>
     </NavigationContainer>
+  );
+};
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppNavigator />
+    </ThemeProvider>
   );
 }
