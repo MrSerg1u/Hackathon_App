@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
-import { GEMINI_API_KEY } from "../keys";
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 // --- CONFIGURARE GEMINI API ---
 const API_KEY = GEMINI_API_KEY;

@@ -18,7 +18,7 @@ import { useTheme } from "../context/ThemeContext";
 // Asumăm că locatii.json este accesibil
 import locatiiRaw from "../../locatii.json";
 
-import { GEMINI_API_KEY } from '../keys';
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 // IMPORTĂM COMPONENTA REUTILIZABILĂ
 import LocationDetailsModal from "../components/LocationDetailsModal";

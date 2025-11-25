@@ -52,3 +52,5 @@ keys.js
 src/keys.js
 
 eas.json
+
+.env
