@@ -36,7 +36,7 @@ export default function MainTabs() {
               iconName = focused ? "search" : "search-outline";
               break;
             case "Explore":
-              iconName = focused ? "compass" : "compass-outline";
+              iconName = focused ? "heart" : "heart-outline";
               break;
             case "Home":
               iconName = focused ? "home" : "home-outline";

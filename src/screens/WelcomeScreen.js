@@ -1,16 +1,16 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useRef, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
   Dimensions,
-  TouchableOpacity,
-  StatusBar,
-  ImageBackground,
+  FlatList,
   Image,
+  ImageBackground,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useTheme } from "../context/ThemeContext";
 
@@ -30,13 +30,15 @@ const Slide = ({ item, colors, styles }) => (
     <View style={styles.darkOverlay} />
     <View style={[styles.slideContent]}>
       {/* Titlul rămâne AURIU (Important) */}
-      <Text style={[styles.title, { color: colors.primary }]}>{item.title}</Text>
-      
+      <Text style={[styles.title, { color: colors.primary }]}>
+        {item.title}
+      </Text>
+
       {/* Subtitlul devine ALB (Text basic) */}
       <Text style={[styles.subtitle, { color: "#FFFFFF" }]}>
         {item.subtitle}
       </Text>
-      
+
       {item.content && <View style={styles.contentArea}>{item.content}</View>}
     </View>
   </ImageBackground>
@@ -50,7 +52,7 @@ export default function WelcomeScreen({ navigation }) {
   const SLIDES = [
     {
       key: "slide1",
-      title: "Bine ai venit în aplicația noastră!",
+      title: "Bine ai venit în SipSpot!",
       subtitle: "Descoperă locurile perfecte pentru tine.",
       content: null,
     },
@@ -153,13 +155,13 @@ export default function WelcomeScreen({ navigation }) {
               Boabe de Loialitate
             </Text>
           </View>
-          
+
           {/* Descrierea lungă: ALB (Text basic) */}
           <Text style={[styles.loyaltyDesc, { color: "#FFFFFF" }]}>
             Sunt câștigate la localurile Partenere și pot fi cheltuite pe oferte
             exclusive:
           </Text>
-          
+
           <View style={styles.loyaltyBenefits}>
             {/* Beneficiile rămân AURII (Sunt importante/recompense) */}
             <Text style={[styles.benefitText, { color: colors.primary }]}>
@@ -307,7 +309,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     // Culoarea este setată dinamic în componentă la #FFFFFF
   },
-  contentArea: { width: "100%", justifyContent: "center", alignItems: "center" },
+  contentArea: {
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   tagContainer: {
     flexDirection: "row",
     flexWrap: "wrap",

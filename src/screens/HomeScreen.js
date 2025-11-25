@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Location from "expo-location";
 import React, {
   useCallback,
@@ -24,8 +26,6 @@ import MapView, {
   PROVIDER_DEFAULT,
   PROVIDER_GOOGLE,
 } from "react-native-maps";
-import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import locatii from "../../locatii.json";
 import { useTheme } from "../context/ThemeContext";
 
@@ -195,7 +195,7 @@ export default function HomeScreen({ navigation }) {
   const [selectedPlace, setSelectedPlace] = useState(null);
 
   const [isFeedExpanded, setIsFeedExpanded] = useState(false);
-  
+
   const [coffeePoints, setCoffeePoints] = useState(0);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
 
@@ -214,7 +214,7 @@ export default function HomeScreen({ navigation }) {
       // 1. Încărcare puncte existente
       const pointsKey = `user_points_${email}`;
       const savedPoints = await AsyncStorage.getItem(pointsKey);
-      
+
       let currentPoints = 0;
       if (savedPoints !== null) {
         currentPoints = parseInt(savedPoints, 10);
@@ -227,10 +227,9 @@ export default function HomeScreen({ navigation }) {
 
       if (giftClaimed !== "true") {
         setTimeout(() => {
-            setIsGiftModalVisible(true);
-        }, 1000); 
+          setIsGiftModalVisible(true);
+        }, 1000);
       }
-
     } catch (e) {
       console.error("Eroare incarcare puncte home:", e);
     }
@@ -262,7 +261,7 @@ export default function HomeScreen({ navigation }) {
       const pointsKey = `user_points_${email}`;
       const giftKey = `gift_claimed_${email}`;
 
-      const newPoints = coffeePoints + 200;
+      const newPoints = coffeePoints + 2000;
 
       await AsyncStorage.setItem(pointsKey, newPoints.toString());
       await AsyncStorage.setItem(giftKey, "true");
@@ -543,27 +542,29 @@ export default function HomeScreen({ navigation }) {
         animationType="fade"
         transparent={true}
         visible={isGiftModalVisible}
-        onRequestClose={() => {}} 
+        onRequestClose={() => {}}
       >
         <View style={styles.giftBackdrop}>
-           <View style={[styles.giftContainer, { backgroundColor: colors.card }]}>
-              <Image source={CoffeeBeanSVG} style={styles.giftIcon} />
-              <Text style={[styles.giftTitle, {color: colors.text}]}>
-                Un mic cadou din partea noastră!
-              </Text>
-              <Text style={[styles.giftSubtitle, {color: colors.subtext}]}>
-                Mulțumim că ești alături de noi. Ai primit:
-              </Text>
-              <Text style={[styles.giftPoints, {color: colors.primary}]}>
-                200 Puncte
-              </Text>
-              <TouchableOpacity 
-                style={[styles.giftButton, { backgroundColor: colors.primary }]}
-                onPress={handleAcceptGift}
-              >
-                <Text style={styles.giftButtonText}>Acceptă</Text>
-              </TouchableOpacity>
-           </View>
+          <View
+            style={[styles.giftContainer, { backgroundColor: colors.card }]}
+          >
+            <Image source={CoffeeBeanSVG} style={styles.giftIcon} />
+            <Text style={[styles.giftTitle, { color: colors.text }]}>
+              Un mic cadou din partea noastră!
+            </Text>
+            <Text style={[styles.giftSubtitle, { color: colors.subtext }]}>
+              Mulțumim că ești alături de noi. Ai primit:
+            </Text>
+            <Text style={[styles.giftPoints, { color: colors.primary }]}>
+              2000 Puncte
+            </Text>
+            <TouchableOpacity
+              style={[styles.giftButton, { backgroundColor: colors.primary }]}
+              onPress={handleAcceptGift}
+            >
+              <Text style={styles.giftButtonText}>Acceptă</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
@@ -785,10 +786,10 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   giftIcon: {
-    width: 60, 
+    width: 60,
     height: 60,
-    resizeMode: 'contain',
-    marginBottom: 20
+    resizeMode: "contain",
+    marginBottom: 20,
   },
   giftTitle: {
     fontSize: 22,

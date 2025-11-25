@@ -1,15 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import React, { useCallback, useState } from "react";
-import {
-  FlatList,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import locationsData from "../../locatii.json"; 
+import { useCallback, useState } from "react";
+import { FlatList, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import locationsData from "../../locatii.json";
 import LocationCard from "../components/LocationCard";
 import LocationDetailsModal from "../components/LocationDetailsModal";
 import { useTheme } from "../context/ThemeContext";
@@ -17,7 +11,7 @@ import { useTheme } from "../context/ThemeContext";
 export default function FavoriteScreen() {
   const { colors } = useTheme();
   const [favoritePlaces, setFavoritePlaces] = useState([]);
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -29,20 +23,20 @@ export default function FavoriteScreen() {
       if (email) {
         const favKey = `favorite_locations_${email}`;
         const storedFavs = await AsyncStorage.getItem(favKey);
-        
+
         if (storedFavs) {
           const savedIdsOrNames = JSON.parse(storedFavs); // Aici sunt salvate ID-urile SAU Numele
 
           // --- MODIFICAREA IMPORTANTĂ ---
           // Filtrăm locațiile verificând dacă ID-ul sau NUMELE lor se află în lista salvată
           const filtered = locationsData.filter((item) => {
-             // Verificăm ambele variante pentru siguranță
-             const isIdMatch = item.id && savedIdsOrNames.includes(item.id);
-             const isNameMatch = savedIdsOrNames.includes(item.name);
-             
-             return isIdMatch || isNameMatch;
+            // Verificăm ambele variante pentru siguranță
+            const isIdMatch = item.id && savedIdsOrNames.includes(item.id);
+            const isNameMatch = savedIdsOrNames.includes(item.name);
+
+            return isIdMatch || isNameMatch;
           });
-          
+
           setFavoritePlaces(filtered);
         } else {
           setFavoritePlaces([]);
@@ -74,10 +68,12 @@ export default function FavoriteScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Favorite ❤️
+          Favorite
         </Text>
       </View>
 
@@ -89,7 +85,11 @@ export default function FavoriteScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="heart-dislike-outline" size={60} color={colors.subtext} />
+            <Ionicons
+              name="heart-dislike-outline"
+              size={60}
+              color={colors.subtext}
+            />
             <Text style={[styles.emptyText, { color: colors.subtext }]}>
               Nu ai nicio locație favorită încă.
             </Text>

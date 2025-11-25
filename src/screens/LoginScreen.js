@@ -67,9 +67,7 @@ export default function LoginScreen({ navigation }) {
         { backgroundColor: colors.background },
       ]}
     >
-      <Text style={[styles.title, { color: colors.text }]}>
-        Bine ai venit! 👋
-      </Text>
+      <Text style={[styles.title, { color: colors.text }]}>SipSpot</Text>
 
       {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
 
