@@ -495,7 +495,9 @@ export default function HomeScreen({ navigation }) {
           />
         </TouchableOpacity>
 
-        <Text style={[styles.heading, { color: colors.text }]}>The Feed</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>
+          Recomandări
+        </Text>
 
         <FlatList
           data={topPlaces}

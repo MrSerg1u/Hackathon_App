@@ -91,7 +91,7 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.headerTitle, { color: colors.text }]}>Search</Text>
+      <Text style={[styles.headerTitle, { color: colors.text }]}>Căutare</Text>
 
       {/* Search Input */}
       <View
