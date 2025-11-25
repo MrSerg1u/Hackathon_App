@@ -24,8 +24,8 @@ import MapView, {
   PROVIDER_DEFAULT,
   PROVIDER_GOOGLE,
 } from "react-native-maps";
-import { useFocusEffect } from "@react-navigation/native"; // IMPORT NOU
-import AsyncStorage from "@react-native-async-storage/async-storage"; // IMPORT NOU
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import locatii from "../../locatii.json";
 import { useTheme } from "../context/ThemeContext";
 
@@ -196,9 +196,11 @@ export default function HomeScreen({ navigation }) {
 
   const [isFeedExpanded, setIsFeedExpanded] = useState(false);
   
-  // State-uri noi pentru Puncte și Cadou
   const [coffeePoints, setCoffeePoints] = useState(0);
   const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
+
+  // --- STATE FAVORITE ---
+  const [favoritesIds, setFavoritesIds] = useState([]);
 
   const mapRef = useRef(null);
   const translateY = useRef(new Animated.Value(0)).current;
@@ -224,14 +226,31 @@ export default function HomeScreen({ navigation }) {
       const giftClaimed = await AsyncStorage.getItem(giftKey);
 
       if (giftClaimed !== "true") {
-        // Dacă nu a primit cadoul, afișăm modalul
         setTimeout(() => {
             setIsGiftModalVisible(true);
-        }, 1000); // Mică întârziere pentru UX
+        }, 1000); 
       }
 
     } catch (e) {
       console.error("Eroare incarcare puncte home:", e);
+    }
+  };
+
+  // --- LOGICA FAVORITE ---
+  const loadFavorites = async () => {
+    try {
+      const email = await AsyncStorage.getItem("user_session");
+      if (email) {
+        const favKey = `favorite_locations_${email}`;
+        const storedFavs = await AsyncStorage.getItem(favKey);
+        if (storedFavs) {
+          setFavoritesIds(JSON.parse(storedFavs));
+        } else {
+          setFavoritesIds([]);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading favorites:", e);
     }
   };
 
@@ -243,14 +262,11 @@ export default function HomeScreen({ navigation }) {
       const pointsKey = `user_points_${email}`;
       const giftKey = `gift_claimed_${email}`;
 
-      // Calculăm noile puncte (curente + 2000)
-      const newPoints = coffeePoints + 2000;
+      const newPoints = coffeePoints + 200;
 
-      // Salvăm în storage
       await AsyncStorage.setItem(pointsKey, newPoints.toString());
       await AsyncStorage.setItem(giftKey, "true");
 
-      // Actualizăm UI
       setCoffeePoints(newPoints);
       setIsGiftModalVisible(false);
     } catch (e) {
@@ -258,10 +274,11 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Folosim useFocusEffect pentru a reîncărca datele când userul revine pe ecran
+  // Use Focus Effect
   useFocusEffect(
     useCallback(() => {
       loadUserDataAndCheckGift();
+      loadFavorites(); // <--- Încărcăm favoritele
     }, [])
   );
 
@@ -400,14 +417,18 @@ export default function HomeScreen({ navigation }) {
   }, [updatePlaces]);
 
   const renderFeedItem = useCallback(
-    ({ item }) => (
-      <LocationCard
-        item={item}
-        onPress={() => openDetailsModal(item)}
-        showDistance={true}
-      />
-    ),
-    [openDetailsModal]
+    ({ item }) => {
+      const isFav = favoritesIds.includes(item.id || item.name);
+      return (
+        <LocationCard
+          item={item}
+          onPress={() => openDetailsModal(item)}
+          showDistance={true}
+          isFavorite={isFav} // <--- Trimitem starea
+        />
+      );
+    },
+    [openDetailsModal, favoritesIds] // <--- Adăugat dependință
   );
 
   const navigateToSearch = () => navigation?.navigate("Search");
@@ -522,7 +543,7 @@ export default function HomeScreen({ navigation }) {
         animationType="fade"
         transparent={true}
         visible={isGiftModalVisible}
-        onRequestClose={() => {}} // Nu permitem închiderea prin back button
+        onRequestClose={() => {}} 
       >
         <View style={styles.giftBackdrop}>
            <View style={[styles.giftContainer, { backgroundColor: colors.card }]}>
@@ -534,7 +555,7 @@ export default function HomeScreen({ navigation }) {
                 Mulțumim că ești alături de noi. Ai primit:
               </Text>
               <Text style={[styles.giftPoints, {color: colors.primary}]}>
-                2000 Puncte
+                200 Puncte
               </Text>
               <TouchableOpacity 
                 style={[styles.giftButton, { backgroundColor: colors.primary }]}
@@ -605,6 +626,7 @@ export default function HomeScreen({ navigation }) {
           maxToRenderPerBatch={2}
           windowSize={3}
           removeClippedSubviews={true}
+          extraData={favoritesIds} // <--- IMPORTANT
           ListFooterComponent={
             <TouchableOpacity
               style={[
@@ -626,6 +648,7 @@ export default function HomeScreen({ navigation }) {
         location={selectedPlace}
         onClose={() => setDetailsModalVisible(false)}
         onPointsUpdate={loadUserDataAndCheckGift}
+        onFavoriteUpdate={loadFavorites} // <--- CALLBACK PENTRU UPDATE
       />
     </View>
   );

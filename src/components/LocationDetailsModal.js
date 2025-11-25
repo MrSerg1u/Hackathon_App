@@ -30,7 +30,13 @@ const OFFER_TYPES = {
   4: { title: "Desert Cadou", description: "La comenzi peste 40 RON.", emoji: "🍰", price: 800 },
 };
 
-export default function LocationDetailsModal({ visible, location, onClose, onPointsUpdate }) {
+export default function LocationDetailsModal({ 
+  visible, 
+  location, 
+  onClose, 
+  onPointsUpdate, 
+  onFavoriteUpdate // <--- Callback pentru actualizarea părintelui
+}) {
   const { colors } = useTheme();
 
   // State
@@ -41,14 +47,76 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
   const [offersModalVisible, setOffersModalVisible] = useState(false);
   const [activeOffers, setActiveOffers] = useState([]);
   const [userPoints, setUserPoints] = useState(0);
+  
+  // State FAVORITE
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  // Încărcare puncte
+  // --- EFFECT: Verifică status favorit și puncte la deschidere ---
   useEffect(() => {
+    if (visible && location) {
+      checkFavoriteStatus();
+    }
     if (offersModalVisible) {
       loadUserPoints();
     }
-  }, [offersModalVisible]);
+  }, [visible, location, offersModalVisible]);
 
+  // --- LOGICĂ FAVORITE ---
+  const checkFavoriteStatus = async () => {
+    try {
+      const email = await AsyncStorage.getItem("user_session");
+      if (!email) return;
+
+      const favKey = `favorite_locations_${email}`;
+      const storedFavs = await AsyncStorage.getItem(favKey);
+      
+      if (storedFavs) {
+        const ids = JSON.parse(storedFavs);
+        // Folosim ID sau Name ca identificator unic
+        const locId = location.id || location.name;
+        setIsFavorite(ids.includes(locId));
+      } else {
+        setIsFavorite(false);
+      }
+    } catch (e) {
+      console.error("Eroare verificare favorite:", e);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    try {
+      const email = await AsyncStorage.getItem("user_session");
+      if (!email) return;
+
+      const favKey = `favorite_locations_${email}`;
+      const storedFavs = await AsyncStorage.getItem(favKey);
+      let ids = storedFavs ? JSON.parse(storedFavs) : [];
+      
+      const locId = location.id || location.name;
+
+      if (ids.includes(locId)) {
+        // Elimină din favorite
+        ids = ids.filter(id => id !== locId);
+        setIsFavorite(false);
+      } else {
+        // Adaugă la favorite
+        ids.push(locId);
+        setIsFavorite(true);
+      }
+
+      await AsyncStorage.setItem(favKey, JSON.stringify(ids));
+
+      // Notificăm părintele (Home/Search) să reîmprospăteze lista
+      if (onFavoriteUpdate) {
+        onFavoriteUpdate();
+      }
+
+    } catch (e) {
+      console.error("Eroare toggle favorite:", e);
+    }
+  };
+
+  // --- LOGICĂ PUNCTE ---
   const loadUserPoints = async () => {
     try {
       const email = await AsyncStorage.getItem("user_session");
@@ -160,6 +228,21 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
             {/* Header Imagine */}
             <View>
               <Image source={{ uri: location.image_url }} style={styles.modalImage} />
+              
+              {/* BUTON FAVORIT (INIMIOARĂ) */}
+              <TouchableOpacity 
+                style={styles.favoriteIconBtn} 
+                onPress={handleToggleFavorite}
+                activeOpacity={0.8}
+              >
+                <Ionicons 
+                  name={isFavorite ? "heart" : "heart-outline"} 
+                  size={24} 
+                  color={isFavorite ? "#FF4757" : "#000"} 
+                />
+              </TouchableOpacity>
+
+              {/* BUTON ÎNCHIDERE */}
               <TouchableOpacity style={styles.closeIconBtn} onPress={onClose}>
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
@@ -343,7 +426,33 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1 },
   modalContent: { width: "90%", borderRadius: 20, overflow: "hidden", paddingBottom: 20, elevation: 10, zIndex: 2, maxHeight: "90%" },
   modalImage: { width: "100%", height: 200, resizeMode: "cover" },
-  closeIconBtn: { position: "absolute", top: 15, right: 15, backgroundColor: "rgba(255,255,255,0.8)", borderRadius: 20, width: 36, height: 36, justifyContent: "center", alignItems: "center", zIndex: 10 },
+  
+  closeIconBtn: { 
+    position: "absolute", 
+    top: 15, 
+    right: 15, 
+    backgroundColor: "rgba(255,255,255,0.8)", 
+    borderRadius: 20, 
+    width: 36, 
+    height: 36, 
+    justifyContent: "center", 
+    alignItems: "center", 
+    zIndex: 10 
+  },
+
+  favoriteIconBtn: {
+    position: "absolute",
+    top: 15,
+    right: 60, // Lângă butonul Close
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+
   modalBody: { padding: 20 },
   modalTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 5 },
   modalAddress: { fontSize: 14, marginLeft: 5 },
@@ -361,7 +470,6 @@ const styles = StyleSheet.create({
   whatsappIcon: { width: 24, height: 24, marginRight: 10 },
   whatsappText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
   
-  // Oferte Styles
   offersModalContent: { width: "85%", borderRadius: 20, padding: 20, elevation: 15, zIndex: 5, maxHeight: "60%" },
   offersHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15, borderBottomWidth: 1, borderBottomColor: "#444", paddingBottom: 10 },
   offersTitle: { fontSize: 20, fontWeight: "bold" },
@@ -378,7 +486,6 @@ const styles = StyleSheet.create({
   activateButton: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
   activateButtonText: { fontSize: 12, fontWeight: "bold" },
 
-  // AI Styles
   aiModalContent: { width: "90%", borderRadius: 15, padding: 20, elevation: 12, minHeight: 250, zIndex: 2 },
   aiModalCloseIcon: { position: "absolute", top: 10, right: 10, padding: 5, zIndex: 10 },
   aiModalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 15, textAlign: "center" },

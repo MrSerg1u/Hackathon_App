@@ -1,5 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -31,7 +33,6 @@ const RATING_OPTIONS = [
   { label: "Nerecomandat (0 - 0.9 ⭐)", min: 0, max: 0.99 },
 ];
 
-// MODIFICARE 1: Adăugăm "route" în props pentru a citi parametrii de navigare
 export default function SearchScreen({ route }) {
   const { colors } = useTheme();
 
@@ -47,12 +48,38 @@ export default function SearchScreen({ route }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
 
-  // MODIFICARE 2: Verificăm dacă am primit parametrul din ProfileScreen
+  // --- STATE PENTRU FAVORITE ---
+  const [favoritesIds, setFavoritesIds] = useState([]);
+
+  // --- FUNCȚIE ÎNCĂRCARE FAVORITE ---
+  const loadFavorites = async () => {
+    try {
+      const email = await AsyncStorage.getItem("user_session");
+      if (email) {
+        const favKey = `favorite_locations_${email}`;
+        const storedFavs = await AsyncStorage.getItem(favKey);
+        if (storedFavs) {
+          setFavoritesIds(JSON.parse(storedFavs));
+        } else {
+          setFavoritesIds([]);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading favorites:", e);
+    }
+  };
+
+  // Încărcăm favoritele la fiecare focus
+  useFocusEffect(
+    useCallback(() => {
+      loadFavorites();
+    }, [])
+  );
+
+  // Handlers
   useEffect(() => {
     if (route?.params?.onlyPartners) {
       setFilterPartner(true);
-      // Opțional: Putem reseta parametrul pentru a nu rămâne blocat dacă dorim
-      // dar de obicei la navigare este bine să rămână așa cum a cerut userul.
     }
   }, [route?.params]);
 
@@ -93,9 +120,17 @@ export default function SearchScreen({ route }) {
     setModalVisible(true);
   };
 
-  const renderItem = ({ item }) => (
-    <LocationCard item={item} onPress={() => openModal(item)} />
-  );
+  const renderItem = ({ item }) => {
+    // Verificăm dacă este favorit
+    const isFav = favoritesIds.includes(item.id || item.name);
+    return (
+      <LocationCard 
+        item={item} 
+        onPress={() => openModal(item)} 
+        isFavorite={isFav} // <--- Pasăm starea
+      />
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -321,6 +356,7 @@ export default function SearchScreen({ route }) {
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          extraData={favoritesIds} // <--- FORȚEAZĂ RE-RANDARE LA SCHIMBARE
           ListEmptyComponent={
             <Text
               style={{
@@ -341,6 +377,7 @@ export default function SearchScreen({ route }) {
         visible={modalVisible}
         location={selectedLocation}
         onClose={() => setModalVisible(false)}
+        onFavoriteUpdate={loadFavorites} // <--- CONECTEAZĂ CALLBACK-UL
       />
     </View>
   );
