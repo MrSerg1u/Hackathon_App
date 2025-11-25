@@ -6,8 +6,6 @@ import { useCallback, useState } from "react"; // ADDED useCallback
 import {
   Alert,
   Image,
-  Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -32,7 +30,7 @@ export default function ProfileScreen({ navigation }) {
     try {
       // 1. Încărcăm sesiunea
       const sessionEmail = await AsyncStorage.getItem("user_session");
-      
+
       if (sessionEmail) {
         setEmail(sessionEmail);
 
@@ -40,9 +38,9 @@ export default function ProfileScreen({ navigation }) {
         const usersString = await AsyncStorage.getItem("registered_users");
         if (usersString) {
           const users = JSON.parse(usersString);
-          const currentUser = users.find(u => u.email === sessionEmail);
+          const currentUser = users.find((u) => u.email === sessionEmail);
           if (currentUser) {
-              setName(currentUser.name);
+            setName(currentUser.name);
           }
         }
 
@@ -52,16 +50,16 @@ export default function ProfileScreen({ navigation }) {
         if (savedImage) {
           setProfileImage(savedImage);
         } else {
-          setProfileImage(null); 
+          setProfileImage(null);
         }
 
         // 4. Încărcăm PUNCTELE specifice utilizatorului
         const pointsKey = `user_points_${sessionEmail}`;
         const savedPoints = await AsyncStorage.getItem(pointsKey);
         if (savedPoints !== null) {
-            setPoints(parseInt(savedPoints, 10));
+          setPoints(parseInt(savedPoints, 10));
         } else {
-            setPoints(0);
+          setPoints(0);
         }
       }
     } catch (e) {
@@ -254,19 +252,6 @@ export default function ProfileScreen({ navigation }) {
           />
         </View>
 
-        {/* --- Butonul "See more..." --- */}
-        <TouchableOpacity
-          style={[
-            styles.seeMoreButton,
-            { backgroundColor: colors.card, borderColor: colors.text },
-          ]}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={[styles.seeMoreText, { color: colors.text }]}>
-            Mai mult...
-          </Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={[
             styles.logoutButton,
@@ -286,40 +271,10 @@ export default function ProfileScreen({ navigation }) {
               { color: theme === "dark" ? "#000000" : "#FFFFFF" },
             ]}
           >
-            Logout
+            Ieșire din cont
           </Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* --- MODALUL --- */}
-      <Modal
-        animationType="slide"
-        transparent={false}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <SafeAreaView
-          style={[
-            styles.modalContainer,
-            { backgroundColor: colors.background },
-          ]}
-        >
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
-              <Text style={[styles.backText, { color: colors.text }]}>
-                {" "}
-                Go back
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalBody}>{/* Conținut viitor */}</View>
-        </SafeAreaView>
-      </Modal>
     </View>
   );
 }
@@ -433,18 +388,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  seeMoreButton: {
-    marginBottom: 30,
-    paddingVertical: 10,
-    paddingHorizontal: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    elevation: 2,
-  },
-  seeMoreText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
+
   settingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
