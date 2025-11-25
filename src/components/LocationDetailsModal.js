@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Linking, // Import necesar
   Modal,
   StyleSheet,
   Text,
@@ -29,6 +30,17 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
 
   if (!location) return null;
 
+  // --- FUNCȚIA REZERVARE WHATSAPP SIMPLIFICATĂ ---
+  const handleWhatsAppReservation = () => {
+    // Deschide doar aplicația WhatsApp (Main Screen)
+    // "whatsapp://" este schema universală pentru a lansa aplicația
+    Linking.openURL("whatsapp://").catch(() => {
+      // Nu facem nimic dacă eșuează (fără alertă, conform cerinței)
+      console.log("Nu s-a putut deschide WhatsApp");
+    });
+  };
+
+  // --- LOGICA AI ---
   const generateAIReview = async () => {
     console.log("Generare AI Rezumat pornită...");
     if (isGeneratingAiReview) return;
@@ -74,7 +86,6 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
   const handleRateAIReview = () => setHasRatedAiReview(true);
 
   const handleReportAIReview = () => {
-    // Logică simulată pentru raportare
     console.log("AI Review reported");
     setAiModalVisible(false);
   };
@@ -90,14 +101,14 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
       >
         {/* Containerul principal */}
         <View style={styles.modalContainer}>
-          {/* 1. BACKDROP (Fundalul întunecat) */}
+          {/* 1. BACKDROP */}
           <TouchableOpacity
             style={styles.backdrop}
             activeOpacity={1}
             onPress={onClose}
           />
 
-          {/* 2. CONȚINUTUL (Cardul Alb) */}
+          {/* 2. CONȚINUTUL */}
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             {/* HEADER POZĂ + CLOSE */}
             <View>
@@ -176,7 +187,7 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
                 {/* Buton WhatsApp */}
                 <TouchableOpacity
                   style={styles.whatsappButton}
-                  onPress={() => console.log("Rezervă la " + location.name)}
+                  onPress={handleWhatsAppReservation} // Apelează funcția simplificată
                   activeOpacity={0.7}
                 >
                   <Image
@@ -200,14 +211,12 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
         onRequestClose={() => setAiModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          {/* Backdrop AI */}
           <TouchableOpacity
             style={styles.backdrop}
             activeOpacity={1}
             onPress={() => setAiModalVisible(false)}
           />
 
-          {/* Conținut AI */}
           <View
             style={[styles.aiModalContent, { backgroundColor: colors.card }]}
           >
@@ -236,7 +245,6 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
                     {aiReviewText}
                   </Text>
 
-                  {/* Butoane Feedback */}
                   <View style={styles.aiModalFooter}>
                     {hasRatedAiReview ? (
                       <Text
@@ -272,7 +280,6 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
                     )}
                   </View>
 
-                  {/* Buton Raportare */}
                   <TouchableOpacity
                     onPress={handleReportAIReview}
                     style={styles.reportButton}
@@ -302,26 +309,23 @@ export default function LocationDetailsModal({ visible, location, onClose }) {
 }
 
 const styles = StyleSheet.create({
-  // Containerul full screen pentru modal
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  // Fundalul semi-transparent (absolut ca să acopere tot)
   backdrop: {
-    ...StyleSheet.absoluteFillObject, // Umple tot ecranul
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.6)",
     zIndex: 1,
   },
-  // Conținutul (Z-index mai mare ca să fie peste backdrop)
   modalContent: {
-    width: "90%", // Puțin mai lat pe ecrane mici
+    width: "90%",
     borderRadius: 20,
     overflow: "hidden",
     paddingBottom: 20,
     elevation: 10,
-    zIndex: 2, // Critic pentru a sta peste backdrop
+    zIndex: 2,
   },
   modalImage: { width: "100%", height: 200, resizeMode: "cover" },
   closeIconBtn: {
@@ -384,8 +388,8 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     padding: 20,
     elevation: 12,
-    minHeight: 250, // Mai înalt pentru feedback
-    zIndex: 2, // Peste backdrop
+    minHeight: 250,
+    zIndex: 2,
   },
   aiModalCloseIcon: {
     position: "absolute",
