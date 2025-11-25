@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons"; // Avem nevoie de Ionicons pentru Modal
 import * as Location from "expo-location";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -10,35 +11,24 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback, // Pentru închiderea modalului
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import locatii from "../../locatii.json";
 import { useTheme } from "../context/ThemeContext";
-// Importul imaginii PNG locale
+
+// Import imagini
 const CoffeeBeanSVG = require("../../assets/images/coffee_bean.png");
+const WhatsAppIcon = require("../../assets/images/whatsapp.png");
 
 const { height } = Dimensions.get("window");
 
-const MAP_HEIGHT_PERCENTAGE = 0.55;
-
 // Definirea înălțimilor Feed-ului
-const INITIAL_FEED_HEIGHT = height * 0.25; // 25% din ecran (poziția implicită)
-const FULL_FEED_HEIGHT = height * 0.5; // 50% din ecran (poziția extinsă)
+const INITIAL_FEED_HEIGHT = height * 0.25;
+const FULL_FEED_HEIGHT = height * 0.5;
 
-// Culori personalizate pentru a se potrivi cu stilul întunecat/auriu din imagine
-const CUSTOM_COLORS = {
-  BACKGROUND: "#121212", // Fundal opac pentru întregul ecran (deasupra hărții)
-  CARD: "#1E1E1E",
-  TEXT_PRIMARY: "#FFFFFF",
-  TEXT_SECONDARY: "#AAAAAA",
-  ACCENT_GOLD: "#D4AF37", // Auriu pentru elemente de accent
-  NOTCH_HANDLE: "#555555",
-  // Fundalul Feed-ului cu transparență (50% opacitate)
-  BACKGROUND_FEED_TRANSPARENT: "rgba(18, 18, 18, 0.5)",
-};
-
-// Stil JSON pentru harta Google Maps pentru a fi întunecată (Păstrat)
+// Stil JSON pentru harta Dark Mode
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
@@ -120,10 +110,9 @@ const DARK_MAP_STYLE = [
   },
 ];
 
-// Lista de orașe predefinite cu coordonate (inclusiv Galați ca default)
 const CITY_OPTIONS = [
   {
-    label: "Galați, România (Implicit)",
+    label: "Galați, România",
     value: "Galati",
     latitude: 45.4348,
     longitude: 28.0535,
@@ -154,35 +143,40 @@ const CITY_OPTIONS = [
   },
 ];
 
-const firstPlace = locatii[0] || CITY_OPTIONS.find((c) => c.value === "Galati");
-
 export default function HomeScreen({ navigation }) {
-  const { colors } = useTheme();
+  // 1. Extragem culorile și tema curentă
+  const { colors, theme } = useTheme();
+
   const [referenceLocation, setReferenceLocation] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [topPlaces, setTopPlaces] = useState([]);
   const [allPlaces, setAllPlaces] = useState([]);
   const [selectedCity, setSelectedCity] = useState(CITY_OPTIONS[0]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isFeedFull, setIsFeedFull] = useState(false); // Starea Feed-ului (extins/restrâns)
-  const [coffeePoints, setCoffeePoints] = useState(125); // Puncte de cafea (valoare random)
+
+  // State pentru Modalul de Oraș
+  const [isCityModalVisible, setIsCityModalVisible] = useState(false);
+
+  // State pentru Modalul de Detalii Locație (ca în SearchScreen)
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+
+  const [isFeedFull, setIsFeedFull] = useState(false);
+  const [coffeePoints, setCoffeePoints] = useState(125);
 
   const mapRef = useRef(null);
-  // Variabila animată pentru înălțimea Feed-ului
   const feedHeight = useRef(new Animated.Value(INITIAL_FEED_HEIGHT)).current;
 
-  // Funcția de animație pentru extindere/restrângere
+  // --- ANIMAȚIE FEED ---
   const animateFeed = (toValue) => {
     Animated.timing(feedHeight, {
       toValue,
       duration: 300,
-      useNativeDriver: false, // Manipulăm proprietăți de layout (height)
+      useNativeDriver: false,
     }).start(() => {
       setIsFeedFull(toValue === FULL_FEED_HEIGHT);
     });
   };
 
-  // NOU: Funcție simplă de comutare la apăsare (click)
   const toggleFeedSize = () => {
     if (isFeedFull) {
       animateFeed(INITIAL_FEED_HEIGHT);
@@ -191,30 +185,16 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Funcție pentru navigarea la ecranul de căutare (folosită și de bara de căutare)
+  // --- NAVIGARE ---
   const navigateToSearch = () => {
-    if (navigation) {
-      navigation.navigate("Search");
-    } else {
-      console.log(
-        "Navigația nu este disponibilă. Nu s-a putut naviga la 'Search'."
-      );
-    }
+    if (navigation) navigation.navigate("Search");
   };
 
-  // Funcție pentru navigarea la ecranul de Profil
   const navigateToProfile = () => {
-    if (navigation) {
-      navigation.navigate("Profile");
-    } else {
-      console.log(
-        "Navigația nu este disponibilă. Nu s-a putut naviga la 'Profile'."
-      );
-    }
+    if (navigation) navigation.navigate("Profile");
   };
 
-  const handleSearchPress = navigateToSearch;
-
+  // --- LOGICĂ LOCAȚIE & HARTĂ ---
   const handleCityChange = (city) => {
     let newLocation;
 
@@ -228,7 +208,7 @@ export default function HomeScreen({ navigation }) {
     }
 
     setSelectedCity(city);
-    setIsModalVisible(false);
+    setIsCityModalVisible(false);
 
     if (mapRef.current) {
       mapRef.current.animateToRegion(
@@ -285,26 +265,16 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     (async () => {
-      let currentCoords = null;
       let { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status === "granted") {
         try {
           let currentLocation = await Location.getCurrentPositionAsync({});
-          currentCoords = currentLocation.coords;
           setUserLocation(currentLocation.coords);
         } catch (error) {
           console.log("Nu s-a putut prelua locația utilizatorului.");
         }
       }
-
       let initialRef = CITY_OPTIONS.find((c) => c.value === "Galati");
-
-      if (currentCoords) {
-        // Lăsată comentată pentru a menține Galațiul ca default conform cerințelor anterioare.
-      }
-
-      // Încărcăm datele (markeri și feed) imediat cu coordonatele implicite (Galați)
       updatePlaces(initialRef.latitude, initialRef.longitude);
     })();
   }, []);
@@ -318,54 +288,59 @@ export default function HomeScreen({ navigation }) {
       }
     : null;
 
-  // Componenta Footer pentru FlatList (butonul "Vezi mai mult...")
+  // --- MODAL DETALII (Logica din SearchScreen) ---
+  const openDetailsModal = (item) => {
+    setSelectedPlace(item);
+    setDetailsModalVisible(true);
+  };
+
+  // Componenta Footer pentru FlatList
   const ListFooter = () => (
     <TouchableOpacity
-      style={[styles.seeMoreButton, { borderColor: CUSTOM_COLORS.ACCENT_GOLD }]}
+      style={[
+        styles.seeMoreButton,
+        { borderColor: "#D4AF37", backgroundColor: colors.card },
+      ]}
       onPress={navigateToSearch}
     >
-      <Text style={[styles.seeMoreText, { color: CUSTOM_COLORS.ACCENT_GOLD }]}>
+      <Text style={[styles.seeMoreText, { color: "#D4AF37" }]}>
         Vezi mai mult...
       </Text>
     </TouchableOpacity>
   );
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: CUSTOM_COLORS.BACKGROUND }]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* HEADER CONTAINER */}
       <View style={styles.headerContainer}>
-        {/* --- BARA DE CĂUTARE CARE FACE REDIRECT --- */}
+        {/* Bara Căutare */}
         <TouchableOpacity
           style={styles.searchBarWrapper}
-          onPress={() => navigation.navigate("Search")} // <--- AICI ESTE NAVIGAREA
+          onPress={() => navigation.navigate("Search")}
           activeOpacity={0.7}
         >
-          {/* pointerEvents="none" este MAGIA. 
-              Face ca TextInput să fie ignorat la click, 
-              deci click-ul ajunge la TouchableOpacity */}
           <View pointerEvents="none">
             <TextInput
               style={[
                 styles.searchBar,
                 {
-                  backgroundColor: CUSTOM_COLORS.CARD,
-                  color: CUSTOM_COLORS.TEXT_PRIMARY,
+                  backgroundColor: colors.card,
+                  color: colors.text,
+                  borderColor: colors.border,
                 },
               ]}
               placeholder="Căutare locuri, adrese..."
-              placeholderTextColor={CUSTOM_COLORS.TEXT_SECONDARY}
-              editable={false} // Important: Nu lăsăm tastatura să apară aici
+              placeholderTextColor={colors.subtext}
+              editable={false}
             />
           </View>
         </TouchableOpacity>
 
-        {/* Buton Puncte de Cafea */}
+        {/* Buton Puncte */}
         <TouchableOpacity
           style={[
             styles.coffeePointsButton,
-            { backgroundColor: CUSTOM_COLORS.CARD },
+            { backgroundColor: colors.card, borderColor: "#D4AF37" },
           ]}
           onPress={navigateToProfile}
         >
@@ -374,62 +349,50 @@ export default function HomeScreen({ navigation }) {
             style={styles.coffeeBeanImage}
             resizeMode="contain"
           />
-          <Text
-            style={[
-              styles.coffeePointsText,
-              { color: CUSTOM_COLORS.ACCENT_GOLD },
-            ]}
-          >
+          <Text style={[styles.coffeePointsText, { color: "#D4AF37" }]}>
             {coffeePoints}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Dropdown pentru Oraș */}
+      {/* Dropdown Oraș */}
       <View style={styles.dropdownContainer}>
         <TouchableOpacity
-          onPress={() => setIsModalVisible(true)}
+          onPress={() => setIsCityModalVisible(true)}
           style={[
             styles.dropdownButton,
             {
-              backgroundColor: CUSTOM_COLORS.CARD,
-              borderColor: CUSTOM_COLORS.ACCENT_GOLD,
+              backgroundColor: colors.card,
+              borderColor: "#D4AF37",
             },
           ]}
         >
-          <Text
-            style={[styles.dropdownText, { color: CUSTOM_COLORS.TEXT_PRIMARY }]}
-          >
+          <Text style={[styles.dropdownText, { color: colors.text }]}>
             {selectedCity.label}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* MODAL pentru Selectarea Orașului (fără modificări) */}
+      {/* MODAL ORAȘ (Listă simplă) */}
       <Modal
         animationType="slide"
         transparent={true}
-        visible={isModalVisible}
-        onRequestClose={() => setIsModalVisible(false)}
+        visible={isCityModalVisible}
+        onRequestClose={() => setIsCityModalVisible(false)}
       >
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setIsModalVisible(false)}
+          onPress={() => setIsCityModalVisible(false)}
         >
-          <View
-            style={[
-              styles.modalContent,
-              { backgroundColor: CUSTOM_COLORS.CARD },
-            ]}
-          >
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             {CITY_OPTIONS.map((city) => (
               <TouchableOpacity
                 key={city.value}
                 style={[
                   styles.modalItem,
                   city.value === selectedCity.value && {
-                    backgroundColor: CUSTOM_COLORS.ACCENT_GOLD + "20",
+                    backgroundColor: "#D4AF37" + "20",
                   },
                 ]}
                 onPress={() => handleCityChange(city)}
@@ -438,9 +401,9 @@ export default function HomeScreen({ navigation }) {
                 <Text
                   style={[
                     styles.modalItemText,
-                    { color: CUSTOM_COLORS.TEXT_PRIMARY },
+                    { color: colors.text },
                     city.value === "User" &&
-                      !userLocation && { color: CUSTOM_COLORS.TEXT_SECONDARY },
+                      !userLocation && { color: colors.subtext },
                   ]}
                 >
                   {city.label}
@@ -452,7 +415,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
-      {/* Harta ocupă spațiul rămas */}
+      {/* HARTA */}
       <View style={styles.mapContainer}>
         {initialRegion && (
           <MapView
@@ -461,9 +424,9 @@ export default function HomeScreen({ navigation }) {
             initialRegion={initialRegion}
             showsUserLocation={!!userLocation}
             loadingEnabled={true}
-            customMapStyle={DARK_MAP_STYLE}
+            // Aplicăm Dark Style doar dacă tema este 'dark'
+            customMapStyle={theme === "dark" ? DARK_MAP_STYLE : []}
           >
-            {/* Markeri */}
             {allPlaces.map((place) => (
               <Marker
                 key={place.name}
@@ -472,13 +435,7 @@ export default function HomeScreen({ navigation }) {
                   longitude: place.coordinates.long,
                 }}
                 title={place.name}
-                description={`${place.distance.toFixed(2)} km de ${
-                  selectedCity.label.split(",")[0]
-                })${
-                  place.name.includes(selectedCity.label.split(",")[0])
-                    ? " (Aici)"
-                    : ""
-                }`}
+                description={`${place.distance.toFixed(2)} km`}
                 pinColor={
                   topPlaces.some((p) => p.name === place.name) ? "red" : "gold"
                 }
@@ -488,46 +445,53 @@ export default function HomeScreen({ navigation }) {
         )}
       </View>
 
-      {/* The Feed - Cu funcționalitate de tragere/extindere */}
+      {/* FEED (Lista Carduri) */}
       <Animated.View
         style={[
           styles.feedContainer,
           {
             height: feedHeight,
-            backgroundColor: CUSTOM_COLORS.BACKGROUND_FEED_TRANSPARENT,
+            // Folosim o culoare ușor transparentă bazată pe tema curentă
+            backgroundColor:
+              theme === "dark"
+                ? "rgba(30, 30, 30, 0.95)"
+                : "rgba(255, 255, 255, 0.95)",
+            borderTopColor: colors.border,
+            borderTopWidth: 1,
           },
         ]}
       >
-        {/* Notch / Mâner de tragere */}
         <TouchableOpacity
           style={styles.notchHandleContainer}
-          onPress={toggleFeedSize} // Comută Feed-ul la apăsare (click)
+          onPress={toggleFeedSize}
         >
           <View
-            style={[
-              styles.notchHandle,
-              { backgroundColor: CUSTOM_COLORS.NOTCH_HANDLE },
-            ]}
+            style={[styles.notchHandle, { backgroundColor: colors.subtext }]}
           />
         </TouchableOpacity>
 
-        <Text style={[styles.heading, { color: CUSTOM_COLORS.TEXT_PRIMARY }]}>
-          The Feed
-        </Text>
+        <Text style={[styles.heading, { color: colors.text }]}>The Feed</Text>
 
         <FlatList
           data={topPlaces}
           keyExtractor={(item) => item.name}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.flatListContent}
-          // ADAUGAREA LIST FOOTER COMPONENT
           ListFooterComponent={ListFooter}
           renderItem={({ item }) => (
-            // Cardul folosește flex-direction: row pentru a alinia imaginea și textul
-            <View
-              style={[styles.cardRow, { backgroundColor: CUSTOM_COLORS.CARD }]}
+            // Aici am adăugat TouchableOpacity și onPress
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => openDetailsModal(item)}
+              style={[
+                styles.cardRow,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                },
+              ]}
             >
-              {/* Imaginea la stânga (și mai mică) */}
               <Image
                 source={{
                   uri:
@@ -535,60 +499,178 @@ export default function HomeScreen({ navigation }) {
                     "https://placehold.co/100x100/333333/D4AF37?text=LOC",
                 }}
                 style={styles.photoRow}
-                onError={(e) =>
-                  console.log("Image load error:", e.nativeEvent.error)
-                }
               />
-              {/* Textul la dreapta (alignat pe verticală) */}
               <View style={styles.cardTextRow}>
+                {item.partener && (
+                  <Text
+                    style={[
+                      styles.partnerTag,
+                      { color: "#D4AF37", borderColor: "#D4AF37" },
+                    ]}
+                  >
+                    PARTENER
+                  </Text>
+                )}
+
                 <Text
-                  style={[
-                    styles.partnerTag,
-                    {
-                      color: CUSTOM_COLORS.ACCENT_GOLD,
-                      borderColor: CUSTOM_COLORS.ACCENT_GOLD,
-                    },
-                  ]}
-                >
-                  PARTENER
-                </Text>
-                <Text
-                  style={[
-                    styles.placeNameRow,
-                    { color: CUSTOM_COLORS.TEXT_PRIMARY },
-                  ]}
+                  style={[styles.placeNameRow, { color: colors.text }]}
+                  numberOfLines={1}
                 >
                   {item.name}
                 </Text>
-                <Text
-                  style={[
-                    styles.ratingRow,
-                    { color: CUSTOM_COLORS.ACCENT_GOLD },
-                  ]}
-                >
+                <Text style={[styles.ratingRow, { color: "#D4AF37" }]}>
                   ★ {item.rating}
                 </Text>
                 <Text
-                  style={[
-                    styles.descriptionRow,
-                    { color: CUSTOM_COLORS.TEXT_SECONDARY },
-                  ]}
+                  style={[styles.descriptionRow, { color: colors.subtext }]}
+                  numberOfLines={2}
                 >
                   {item.short_description}
                 </Text>
-                <Text
-                  style={[
-                    styles.distanceRow,
-                    { color: CUSTOM_COLORS.TEXT_SECONDARY },
-                  ]}
-                >
+                <Text style={[styles.distanceRow, { color: colors.subtext }]}>
                   {item.distance.toFixed(2)} km distanță
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
         />
       </Animated.View>
+
+      {/* --- MODAL DETALII (Identic cu SearchScreen) --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={detailsModalVisible}
+        onRequestClose={() => setDetailsModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDetailsModalVisible(false)}
+        >
+          <TouchableWithoutFeedback>
+            <View
+              style={[
+                styles.detailsModalContent,
+                { backgroundColor: colors.card },
+              ]}
+            >
+              {selectedPlace && (
+                <>
+                  <View>
+                    <Image
+                      source={{ uri: selectedPlace.image_url }}
+                      style={styles.detailsModalImage}
+                    />
+                    {/* Buton Close X */}
+                    <TouchableOpacity
+                      style={styles.closeIconBtn}
+                      onPress={() => setDetailsModalVisible(false)}
+                    >
+                      <Ionicons name="close" size={24} color="#000" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.detailsModalBody}>
+                    <Text
+                      style={[styles.detailsModalTitle, { color: colors.text }]}
+                    >
+                      {selectedPlace.name}
+                    </Text>
+
+                    {selectedPlace.partener && (
+                      <Text
+                        style={{
+                          color: colors.primary,
+                          fontWeight: "bold",
+                          marginBottom: 10,
+                        }}
+                      >
+                        ⭐ LOCAȚIE PARTENER
+                      </Text>
+                    )}
+
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <Ionicons
+                        name="location"
+                        size={18}
+                        color={colors.primary}
+                      />
+                      <Text
+                        style={[
+                          styles.detailsModalAddress,
+                          { color: colors.subtext },
+                        ]}
+                      >
+                        {selectedPlace.address}
+                      </Text>
+                    </View>
+
+                    <Text
+                      style={{
+                        color: colors.subtext,
+                        fontStyle: "italic",
+                        marginBottom: 5,
+                      }}
+                    >
+                      Tip:{" "}
+                      {selectedPlace.type
+                        ? selectedPlace.type.toUpperCase()
+                        : "N/A"}
+                    </Text>
+
+                    <Text
+                      style={[styles.detailsModalDesc, { color: colors.text }]}
+                    >
+                      {selectedPlace.short_description}
+                    </Text>
+
+                    <View
+                      style={[
+                        styles.ratingContainer,
+                        { marginTop: 10, marginBottom: 20 },
+                      ]}
+                    >
+                      <Ionicons name="star" size={24} color="#FFD700" />
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          fontWeight: "bold",
+                          marginLeft: 5,
+                          color: colors.text,
+                        }}
+                      >
+                        {selectedPlace.rating}
+                      </Text>
+                    </View>
+
+                    {/* Buton WhatsApp */}
+                    <TouchableOpacity
+                      style={styles.whatsappButton}
+                      onPress={() =>
+                        console.log("Rezervă la " + selectedPlace.name)
+                      }
+                    >
+                      <Image
+                        source={WhatsAppIcon}
+                        style={styles.whatsappIcon}
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.whatsappText}>Rezervă</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -598,7 +680,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 40,
   },
-  // NOU: Container care include bara de căutare și punctele de cafea pe același rând
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -607,7 +688,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   searchBarWrapper: {
-    flex: 1, // Permite barei de căutare să ocupe spațiul rămas
+    flex: 1,
     marginRight: 10,
   },
   searchBar: {
@@ -615,14 +696,12 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "#333333",
-    shadowColor: CUSTOM_COLORS.ACCENT_GOLD,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
     elevation: 5,
   },
-  // NOU: Stil pentru butonul de puncte de cafea
   coffeePointsButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -630,19 +709,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: CUSTOM_COLORS.ACCENT_GOLD,
-    shadowColor: CUSTOM_COLORS.ACCENT_GOLD,
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
   },
-  // NOU: Stil pentru imaginea PNG
   coffeeBeanImage: {
     width: 20,
     height: 20,
     marginRight: 4,
-    // Eliminăm tintColor, deoarece imaginea PNG este deja colorată
-    // tintColor: CUSTOM_COLORS.ACCENT_GOLD, // COMENTAT/ELIMINAT
   },
   coffeePointsText: {
     fontSize: 16,
@@ -654,50 +729,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     zIndex: 9,
-    // Flex direction este menținut, dar acum conține un singur element
-  },
-  dropdownLabel: {
-    fontSize: 14,
-    marginRight: 10,
-    fontWeight: "500",
-    // ELIMINAT din View, dar păstrat aici pentru a nu rupe styles.
   },
   dropdownButton: {
     flex: 1,
     padding: 10,
     borderRadius: 10,
     borderWidth: 1,
-    shadowColor: CUSTOM_COLORS.ACCENT_GOLD,
+    shadowColor: "#000",
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
   },
   dropdownText: {
     fontSize: 14,
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-  },
-  modalContent: {
-    width: "80%",
-    borderRadius: 12,
-    padding: 10,
-    shadowColor: CUSTOM_COLORS.ACCENT_GOLD,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  modalItem: {
-    padding: 15,
-    borderRadius: 8,
-    marginVertical: 4,
-  },
-  modalItemText: {
-    fontSize: 16,
   },
   mapContainer: {
     flex: 1,
@@ -715,11 +759,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 15,
     paddingBottom: 20,
-    // Culoarea este setată direct în componentă folosind CUSTOM_COLORS.BACKGROUND_FEED_TRANSPARENT
   },
   notchHandleContainer: {
     alignItems: "center",
@@ -740,35 +783,32 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   flatListContent: {
-    paddingVertical: 5, // Spațiu vertical pentru lista
+    paddingVertical: 5,
   },
-  // Stilul cardului a fost ajustat la 150px (conform cerinței anterioare)
+  // --- STILURI CARD FEED ---
   cardRow: {
-    flexDirection: "row", // Aliniere orizontală
+    flexDirection: "row",
     marginHorizontal: 15,
     borderRadius: 12,
-    marginBottom: 10, // Spațiu redus între carduri
-    padding: 0, // Eliminăm padding-ul din containerul cardului
+    marginBottom: 10,
     elevation: 5,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     overflow: "hidden",
-    height: 150, // Înălțimea cardului este acum 150px
+    height: 150,
   },
-  // NOU: Stil pentru imaginea din cardul Rând (mai mică și pătrată)
   photoRow: {
     width: 100,
-    height: "100%", // Ocupă toată înălțimea cardului
+    height: "100%",
     resizeMode: "cover",
     borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12, // Imaginea rămâne rotunjită la colțul stânga
+    borderBottomLeftRadius: 12,
   },
-  // NOU: Containerul de text din cardul Rând
   cardTextRow: {
     flex: 1,
-    padding: 10, // Padding intern
+    padding: 10,
     justifyContent: "center",
   },
   partnerTag: {
@@ -779,31 +819,26 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderWidth: 1,
     borderRadius: 4,
-    marginTop: -5, // Aliniat mai sus
+    marginTop: -5,
   },
   placeNameRow: {
     fontWeight: "bold",
-    fontSize: 16, // Font mai mic
+    fontSize: 16,
     marginBottom: 1,
   },
   ratingRow: {
-    fontSize: 14, // Font mai mic
+    fontSize: 14,
     fontWeight: "bold",
     marginBottom: 2,
   },
   descriptionRow: {
-    fontSize: 10, // Font foarte mic
-    // Ascunde excesul de text dacă este necesar (opțional)
-    // maxHeight: 20,
-    // overflow: 'hidden'
+    fontSize: 10,
   },
   distanceRow: {
     fontSize: 10,
     fontStyle: "italic",
     marginTop: 2,
   },
-
-  // Stiluri pentru noul buton "Vezi mai mult..."
   seeMoreButton: {
     marginHorizontal: 15,
     marginTop: 5,
@@ -812,14 +847,102 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
-    backgroundColor: CUSTOM_COLORS.CARD, // Fundalul butonului este la fel ca al cardului
-    shadowColor: CUSTOM_COLORS.ACCENT_GOLD,
-    shadowOpacity: 0.3,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
   },
   seeMoreText: {
     fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  // --- STILURI PENTRU MODALURI ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    width: "80%",
+    borderRadius: 12,
+    padding: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  modalItem: {
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  modalItemText: {
+    fontSize: 16,
+  },
+
+  // --- STILURI MODAL DETALII (Locație) ---
+  detailsModalContent: {
+    width: "100%",
+    borderRadius: 20,
+    overflow: "hidden",
+    paddingBottom: 20,
+    elevation: 10,
+  },
+  detailsModalImage: {
+    width: "100%",
+    height: 200,
+    resizeMode: "cover",
+  },
+  detailsModalBody: {
+    padding: 20,
+  },
+  detailsModalTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 5 },
+  detailsModalAddress: { fontSize: 14, marginLeft: 5 },
+  detailsModalDesc: { fontSize: 16, marginTop: 10, lineHeight: 22 },
+
+  closeIconBtn: {
+    position: "absolute",
+    top: 15,
+    right: 15,
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 5,
+    zIndex: 10,
+  },
+  ratingContainer: { flexDirection: "row", alignItems: "center" },
+
+  whatsappButton: {
+    flexDirection: "row",
+    backgroundColor: "#25D366",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    alignSelf: "flex-end",
+  },
+  whatsappIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 10,
+  },
+  whatsappText: {
+    color: "#fff",
+    fontSize: 18,
     fontWeight: "bold",
   },
 });
