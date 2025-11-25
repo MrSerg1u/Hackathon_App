@@ -18,7 +18,7 @@ const { width, height } = Dimensions.get("window");
 
 // --- CONSTANTE & IMAGINI ---
 const PLACE_TYPES = ["Restaurant", "Coffee Shop", "Bar", "Fast Food"];
-const WelcomeBackground = require("../../assets/images/welcome_background.png");
+const WelcomeBackground = require("../../assets/images/welcome_background.jpg");
 const CoffeeBeanIcon = require("../../assets/images/coffee_bean.png");
 
 const Slide = ({ item, colors, styles }) => (
