@@ -8,19 +8,21 @@ export const Colors = {
     background: "#ffffff",
     text: "#333333",
     card: "#f0f0f0",
-    primary: "#007AFF",
+    primary: "#D4AF37", // Auriu pentru accente
     border: "#ddd",
     subtext: "gray",
     inputBackground: "#f9f9f9",
+    coffee: "#6F4E37", // Culoare de cafea
   },
   dark: {
-    background: "#121212", // Negru soft (nu #000 pur)
+    background: "#121212", // Negru soft
     text: "#ffffff",
     card: "#1E1E1E",
-    primary: "#0A84FF", // Albastru mai deschis pentru contrast
+    primary: "#D4AF37", // Auriu pentru accente
     border: "#333",
     subtext: "#aaa",
     inputBackground: "#2C2C2C",
+    coffee: "#A67B5B", // Culoare de cafea mai deschisă pentru dark mode
   },
 };
 

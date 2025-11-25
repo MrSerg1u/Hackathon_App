@@ -20,6 +20,8 @@ import { useTheme } from "../context/ThemeContext"; // Importăm hook-ul de tem�
 // Asumăm că locatii.json este accesibil
 import locatiiRaw from "../../locatii.json";
 
+import { GEMINI_API_KEY } from '../keys';
+
 // Import imaginea de WhatsApp (aceeași cale ca în HomeScreen)
 const WhatsAppIcon = require("../../assets/images/whatsapp.png");
 
@@ -33,7 +35,8 @@ const locatii = locatiiRaw.map((p, index) => ({
 }));
 
 // --- CONFIGURARE GEMINI API ---
-const API_KEY = "AIzaSyB5ElionuS9ixO40Evrc6hLH2g4PYRfrKE";
+
+const API_KEY = GEMINI_API_KEY;
 const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
