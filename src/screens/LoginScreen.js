@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,10 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useTheme } from "../context/ThemeContext"; // <--- 1. Importăm Hook-ul
+import { useTheme } from "../context/ThemeContext";
 
 export default function LoginScreen({ navigation }) {
-  const { colors } = useTheme(); // <--- 2. Extragem culorile
+  const { colors } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,13 +39,24 @@ export default function LoginScreen({ navigation }) {
       );
 
       if (user) {
-        await AsyncStorage.setItem("user_session", JSON.stringify(user));
-        navigation.replace("MainTabs");
+        // 1. Salvăm DOAR email-ul ca sesiune
+        await AsyncStorage.setItem("user_session", cleanEmail);
+
+        // 2. Verificăm dacă a făcut onboarding-ul
+        const onboardingKey = `onboarding_complete:${cleanEmail}`;
+        const onboardingComplete = await AsyncStorage.getItem(onboardingKey);
+
+        if (onboardingComplete === "true") {
+          navigation.replace("MainTabs");
+        } else {
+          navigation.replace("Welcome");
+        }
       } else {
         setErrors({ password: "Email sau parolă incorectă." });
       }
     } catch (e) {
-      Alert.alert("Eroare", "Nu am putut verifica datele.");
+      console.error("Eroare la login:", e);
+      setErrors({ general: "Eroare la autentificare." });
     }
   };
 
@@ -61,6 +71,8 @@ export default function LoginScreen({ navigation }) {
         Bine ai venit! 👋
       </Text>
 
+      {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
+
       <View style={styles.inputGroup}>
         <TextInput
           style={[
@@ -73,7 +85,7 @@ export default function LoginScreen({ navigation }) {
             errors.email && styles.inputError,
           ]}
           placeholder="Email"
-          placeholderTextColor={colors.subtext} // Culoare dinamică pt placeholder
+          placeholderTextColor={colors.subtext}
           value={email}
           onChangeText={(text) => {
             setEmail(text);
@@ -127,7 +139,7 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: "center", padding: 20 }, // Fără bg color fix
+  container: { flexGrow: 1, justifyContent: "center", padding: 20 },
   title: {
     fontSize: 30,
     fontWeight: "bold",

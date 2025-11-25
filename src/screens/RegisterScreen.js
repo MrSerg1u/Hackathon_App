@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,10 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useTheme } from "../context/ThemeContext"; // <--- Import
+import { useTheme } from "../context/ThemeContext";
 
 export default function RegisterScreen({ navigation }) {
-  const { colors } = useTheme(); // <--- Extragere culori
+  const { colors } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +26,8 @@ export default function RegisterScreen({ navigation }) {
 
     if (!cleanName) currentErrors.name = "Te rog introdu numele tău.";
     if (!cleanEmail) currentErrors.email = "Email-ul este obligatoriu.";
-    else if (!cleanEmail.includes("@")) currentErrors.email = "Format invalid.";
+    else if (!cleanEmail.includes("@"))
+      currentErrors.email = "Format invalid.";
     if (!cleanPassword) currentErrors.password = "Parola este obligatorie.";
     else if (cleanPassword.length < 6)
       currentErrors.password = "Minim 6 caractere.";
@@ -55,12 +55,15 @@ export default function RegisterScreen({ navigation }) {
       users.push(newUser);
 
       await AsyncStorage.setItem("registered_users", JSON.stringify(users));
-      await AsyncStorage.setItem("user_session", JSON.stringify(newUser));
 
-      Alert.alert("Succes", `Cont creat!`);
-      navigation.replace("MainTabs");
+      // Salvăm sesiunea (Email simplu)
+      await AsyncStorage.setItem("user_session", cleanEmail);
+
+      // Navigăm la Welcome (User nou -> trebuie să vadă onboarding)
+      navigation.replace("Welcome");
     } catch (e) {
-      Alert.alert("Eroare", "Eroare la salvare.");
+      console.error("Eroare la register:", e);
+      setErrors({ general: "A apărut o eroare la salvare." });
     }
   };
 
@@ -73,7 +76,8 @@ export default function RegisterScreen({ navigation }) {
     >
       <Text style={[styles.title, { color: colors.text }]}>Creează Cont</Text>
 
-      {/* INPUT NUME */}
+      {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
+
       <View style={styles.inputGroup}>
         <TextInput
           style={[
@@ -96,7 +100,6 @@ export default function RegisterScreen({ navigation }) {
         {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
       </View>
 
-      {/* INPUT EMAIL */}
       <View style={styles.inputGroup}>
         <TextInput
           style={[
@@ -121,7 +124,6 @@ export default function RegisterScreen({ navigation }) {
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
       </View>
 
-      {/* INPUT PAROLĂ */}
       <View style={styles.inputGroup}>
         <TextInput
           style={[
@@ -148,7 +150,7 @@ export default function RegisterScreen({ navigation }) {
       </View>
 
       <TouchableOpacity
-        style={[styles.button, { backgroundColor: "#28a745" }]}
+        style={[styles.button, { backgroundColor: colors.primary }]}
         onPress={handleRegister}
       >
         <Text style={styles.buttonText}>Înregistrează-te</Text>

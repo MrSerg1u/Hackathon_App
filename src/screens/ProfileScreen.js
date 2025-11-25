@@ -29,22 +29,30 @@ export default function ProfileScreen({ navigation }) {
   useEffect(() => {
     const getUserData = async () => {
       try {
-        // 1. Încărcăm datele sesiunii pentru a afla CINE este logat
-        const jsonValue = await AsyncStorage.getItem("user_session");
-        if (jsonValue) {
-          const user = JSON.parse(jsonValue);
-          setName(user.name);
-          setEmail(user.email);
+        // 1. Încărcăm sesiunea (ACUM ESTE DOAR UN STRING/EMAIL)
+        const sessionEmail = await AsyncStorage.getItem("user_session");
+        
+        if (sessionEmail) {
+          setEmail(sessionEmail);
 
-          // 2. Încărcăm imaginea SPECIFICĂ acestui utilizator
-          // Cheia va fi de ex: "profile_image_ion@email.com"
-          const uniqueImageKey = `profile_image_${user.email}`;
+          // 2. Căutăm detaliile complete (Nume) în lista utilizatorilor înregistrați
+          const usersString = await AsyncStorage.getItem("registered_users");
+          if (usersString) {
+            const users = JSON.parse(usersString);
+            const currentUser = users.find(u => u.email === sessionEmail);
+            if (currentUser) {
+                setName(currentUser.name);
+            }
+          }
+
+          // 3. Încărcăm imaginea SPECIFICĂ acestui utilizator
+          const uniqueImageKey = `profile_image_${sessionEmail}`;
           const savedImage = await AsyncStorage.getItem(uniqueImageKey);
 
           if (savedImage) {
             setProfileImage(savedImage);
           } else {
-            setProfileImage(null); // Resetăm imaginea dacă utilizatorul nu are una
+            setProfileImage(null); 
           }
         }
       } catch (e) {
@@ -76,7 +84,7 @@ export default function ProfileScreen({ navigation }) {
       const imageUri = result.assets[0].uri;
       setProfileImage(imageUri);
 
-      // 3. Salvăm imaginea folosind cheia UNICĂ a utilizatorului
+      // 4. Salvăm imaginea folosind cheia UNICĂ a utilizatorului (email)
       if (email) {
         const uniqueImageKey = `profile_image_${email}`;
         await AsyncStorage.setItem(uniqueImageKey, imageUri);
@@ -86,6 +94,7 @@ export default function ProfileScreen({ navigation }) {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("user_session");
+    // Opțional: Nu ștergem 'onboarding_complete' ca să nu arătăm welcome screen la re-logare pe același cont
     navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 
