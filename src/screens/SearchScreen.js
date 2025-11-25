@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   FlatList,
-  StyleSheet, // Îl păstrăm doar pentru stilurile containerului principal
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,10 +12,9 @@ import locationsData from "../../locatii.json";
 import { useTheme } from "../context/ThemeContext";
 
 // IMPORTĂM COMPONENTELE REUTILIZABILE
-import LocationCard from "../components/LocationCard"; // <--- NOU
+import LocationCard from "../components/LocationCard";
 import LocationDetailsModal from "../components/LocationDetailsModal";
 
-// ... (Păstrează constantele TYPE_OPTIONS și RATING_OPTIONS aici) ...
 const TYPE_OPTIONS = [
   { label: "Restaurant", value: "restaurant" },
   { label: "Bar", value: "bar" },
@@ -32,7 +31,8 @@ const RATING_OPTIONS = [
   { label: "Nerecomandat (0 - 0.9 ⭐)", min: 0, max: 0.99 },
 ];
 
-export default function SearchScreen() {
+// MODIFICARE 1: Adăugăm "route" în props pentru a citi parametrii de navigare
+export default function SearchScreen({ route }) {
   const { colors } = useTheme();
 
   const [searchText, setSearchText] = useState("");
@@ -46,6 +46,15 @@ export default function SearchScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
+
+  // MODIFICARE 2: Verificăm dacă am primit parametrul din ProfileScreen
+  useEffect(() => {
+    if (route?.params?.onlyPartners) {
+      setFilterPartner(true);
+      // Opțional: Putem reseta parametrul pentru a nu rămâne blocat dacă dorim
+      // dar de obicei la navigare este bine să rămână așa cum a cerut userul.
+    }
+  }, [route?.params]);
 
   useEffect(() => {
     let data = locationsData;
@@ -84,7 +93,6 @@ export default function SearchScreen() {
     setModalVisible(true);
   };
 
-  // --- FUNCTIA RENDER ITEM ESTE ACUM FOARTE SIMPLA ---
   const renderItem = ({ item }) => (
     <LocationCard item={item} onPress={() => openModal(item)} />
   );
@@ -338,8 +346,6 @@ export default function SearchScreen() {
   );
 }
 
-// Am păstrat doar stilurile strict necesare containerului și filtrelor
-// Toate stilurile cardului au fost mutate în LocationCard.js
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 50 },
   headerTitle: {

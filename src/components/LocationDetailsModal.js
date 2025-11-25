@@ -16,7 +16,13 @@ import {
 import { useTheme } from "../context/ThemeContext";
 import { GEMINI_API_KEY } from "../keys";
 
-// ... (Restul importurilor și constantele OFFER_TYPES rămân la fel) ...
+// --- CONFIGURARE GEMINI API ---
+const API_KEY = GEMINI_API_KEY;
+const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+const WhatsAppIcon = require("../../assets/images/whatsapp.png");
+
+// --- DEFINIȚII OFERTE ---
 const OFFER_TYPES = {
   1: { title: "10% Reducere", description: "Se aplică la nota finală.", emoji: "🏷️", price: 300 },
   2: { title: "O cafea gratis", description: "Primiți un Espresso la desert.", emoji: "☕", price: 500 },
@@ -24,17 +30,10 @@ const OFFER_TYPES = {
   4: { title: "Desert Cadou", description: "La comenzi peste 40 RON.", emoji: "🍰", price: 800 },
 };
 
-// CONSTANTELE API RĂMÂN LA FEL...
-const API_KEY = GEMINI_API_KEY;
-const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-const WhatsAppIcon = require("../../assets/images/whatsapp.png");
-
-// ⬇️ MODIFICARE AICI: Adăugăm `onPointsUpdate` în lista de props
 export default function LocationDetailsModal({ visible, location, onClose, onPointsUpdate }) {
   const { colors } = useTheme();
 
-  // ... (State-urile rămân la fel) ...
+  // State
   const [aiModalVisible, setAiModalVisible] = useState(false);
   const [aiReviewText, setAiReviewText] = useState(null);
   const [isGeneratingAiReview, setIsGeneratingAiReview] = useState(false);
@@ -43,7 +42,7 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
   const [activeOffers, setActiveOffers] = useState([]);
   const [userPoints, setUserPoints] = useState(0);
 
-  // ... (useEffect și loadUserPoints rămân la fel) ...
+  // Încărcare puncte
   useEffect(() => {
     if (offersModalVisible) {
       loadUserPoints();
@@ -84,7 +83,6 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
           
           Alert.alert("Succes!", "Oferta a fost activată.");
 
-          // ⬇️ MODIFICARE AICI: Actualizăm pagina părinte (Home) dacă funcția există
           if (onPointsUpdate) {
             onPointsUpdate();
           }
@@ -100,63 +98,138 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
     }
   };
 
-  // ... (Restul codului, funcția handleWhatsAppReservation, AI logic, și render rămân neschimbate) ...
-  // DOAR ASIGURĂ-TE CĂ COPIEZI TOT CODUL DE RENDER DIN FIȘIERUL ANTERIOR
-  
-  // (Pentru claritate, am omis codul UI care nu s-a schimbat, dar el trebuie să fie prezent aici)
-  
-  // --- INSEREZ LOGICA PENTRU RENDER ---
-  const resetOffersState = () => { setOffersModalVisible(false); };
-  const handleWhatsAppReservation = () => { Linking.openURL("whatsapp://").catch(() => {}); };
-  
-  const generateAIReview = async () => {
-     // ... (codul AI existent) ...
-     setAiModalVisible(true); 
-     // ...
+  // --- ALTE HANDLERS ---
+  const handleWhatsAppReservation = () => {
+    Linking.openURL("whatsapp://").catch(() => {
+      console.log("Nu s-a putut deschide WhatsApp");
+    });
   };
+
+  const generateAIReview = async () => {
+    if (isGeneratingAiReview) return;
+    setAiModalVisible(true);
+    setIsGeneratingAiReview(true);
+    setAiReviewText(null);
+    setHasRatedAiReview(false);
+
+    const locationDetails = { ...location };
+    delete locationDetails.image_url;
+    delete locationDetails.offers;
+
+    const systemPrompt = `Ești un expert în recomandări locale. Generează un scurt și convingător rezumat pentru acest local. 
+    Rezumatul trebuie să fie un paragraf scurt care să capteze atmosfera. 
+    La final, adaugă O SINGURĂ FRAZĂ: "Perfect pentru...". Răspunde DOAR cu textul.`;
+
+    const userQuery = `Rezumat pentru: ${JSON.stringify(locationDetails)}`;
+
+    const payload = {
+      contents: [{ parts: [{ text: userQuery }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+    };
+
+    let generatedText = "Nu s-a putut genera rezumatul.";
+
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) generatedText = text;
+    } catch (error) {
+      console.error("AI Error:", error);
+    }
+
+    setAiReviewText(generatedText);
+    setIsGeneratingAiReview(false);
+  };
+
   const handleRateAIReview = () => setHasRatedAiReview(true);
   const handleReportAIReview = () => setAiModalVisible(false);
 
   return (
     <>
+      {/* --- MODAL PRINCIPAL --- */}
       <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
-        {/* ... Codul UI pentru Modalul Principal ... */}
-         <View style={styles.modalContainer}>
+        <View style={styles.modalContainer}>
           <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+          
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
-             {/* ... Imagine, Titlu, etc ... */}
-             <View>
+            {/* Header Imagine */}
+            <View>
               <Image source={{ uri: location.image_url }} style={styles.modalImage} />
               <TouchableOpacity style={styles.closeIconBtn} onPress={onClose}>
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
+
             <View style={styles.modalBody}>
-                <Text style={[styles.modalTitle, { color: colors.text }]}>{location.name}</Text>
-                {/* ... Restul detaliilor ... */}
-                
-                {/* Butoane Actiune */}
-                <View style={styles.actionButtonsContainer}>
-                    {location.partener && location.offers && location.offers.length > 0 && (
-                      <TouchableOpacity
-                        style={[styles.offersButton, { backgroundColor: colors.primary }]}
-                        onPress={() => setOffersModalVisible(true)}
-                      >
-                        <Ionicons name="gift-outline" size={20} color="#000" />
-                        <Text style={styles.offersButtonText}>Vezi oferte partenere</Text>
-                      </TouchableOpacity>
-                    )}
-                    {/* ... Butoane AI si Whatsapp ... */}
-                    <View style={styles.modalActionButtonsRow}>
-                        <TouchableOpacity style={[styles.aiReviewButton, { borderColor: colors.primary }]} onPress={generateAIReview}>
-                            <Text style={[styles.aiReviewTextBtn, { color: colors.primary }]}>✨ AI Rezumat</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppReservation}>
-                             <Image source={WhatsAppIcon} style={styles.whatsappIcon} resizeMode="contain" />
-                             <Text style={styles.whatsappText}>Rezervă</Text>
-                        </TouchableOpacity>
-                    </View>
+              {/* Titlu */}
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{location.name}</Text>
+
+              {/* Tag Partener */}
+              {location.partener && (
+                <Text style={{ color: colors.primary, fontWeight: "bold", marginBottom: 10 }}>
+                  ⭐ LOCAȚIE PARTENER
+                </Text>
+              )}
+
+              {/* Adresă */}
+              <View style={styles.rowCenter}>
+                <Ionicons name="location" size={18} color={colors.primary} />
+                <Text style={[styles.modalAddress, { color: colors.subtext }]}>
+                  {location.address}
+                </Text>
+              </View>
+
+              {/* Tip */}
+              <Text style={{ color: colors.subtext, fontStyle: "italic", marginBottom: 5 }}>
+                Tip: {location.type ? location.type.toUpperCase() : "N/A"}
+              </Text>
+
+              {/* Descriere */}
+              <Text style={[styles.modalDesc, { color: colors.text }]}>
+                {location.short_description}
+              </Text>
+
+              {/* Rating */}
+              <View style={styles.ratingContainer}>
+                <Ionicons name="star" size={24} color="#D4AF37" />
+                <Text style={[styles.ratingText, { color: colors.text }]}>
+                  {location.rating}
+                </Text>
+              </View>
+
+              {/* Butoane Actiune */}
+              <View style={styles.actionButtonsContainer}>
+                {/* Buton Oferte (Doar Parteneri) */}
+                {location.partener && location.offers && location.offers.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.offersButton, { backgroundColor: colors.primary }]}
+                    onPress={() => setOffersModalVisible(true)}
+                  >
+                    <Ionicons name="gift-outline" size={20} color="#000" />
+                    <Text style={styles.offersButtonText}>Vezi oferte partenere</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Rând butoane AI și WhatsApp */}
+                <View style={styles.modalActionButtonsRow}>
+                  <TouchableOpacity 
+                    style={[styles.aiReviewButton, { borderColor: colors.primary }]} 
+                    onPress={generateAIReview}
+                  >
+                    <Text style={[styles.aiReviewTextBtn, { color: colors.primary }]}>✨ AI Rezumat</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.whatsappButton} onPress={handleWhatsAppReservation}>
+                    <Image source={WhatsAppIcon} style={styles.whatsappIcon} resizeMode="contain" />
+                    <Text style={styles.whatsappText}>Rezervă</Text>
+                  </TouchableOpacity>
                 </View>
+              </View>
             </View>
           </View>
         </View>
@@ -166,6 +239,7 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
       <Modal animationType="slide" transparent={true} visible={offersModalVisible} onRequestClose={() => setOffersModalVisible(false)}>
         <View style={styles.modalContainer}>
            <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => setOffersModalVisible(false)} />
+           
            <View style={[styles.offersModalContent, { backgroundColor: colors.card }]}>
               <View style={styles.offersHeader}>
                  <View>
@@ -215,27 +289,56 @@ export default function LocationDetailsModal({ visible, location, onClose, onPoi
         </View>
       </Modal>
       
-      {/* ... Modalul AI rămâne neschimbat ... */}
-       <Modal animationType="fade" transparent={true} visible={aiModalVisible} onRequestClose={() => setAiModalVisible(false)}>
-         {/* ... Conținut modal AI ... */}
-         <View style={styles.modalContainer}>
-             <TouchableOpacity style={styles.backdrop} onPress={() => setAiModalVisible(false)} />
-             <View style={[styles.aiModalContent, { backgroundColor: colors.card }]}>
-                {/* ... Logica AI ... */}
-                {isGeneratingAiReview ? <ActivityIndicator size="large" color={colors.primary}/> : <Text style={{color:colors.text}}>{aiReviewText}</Text>}
-                {/* ... Butoane close/report ... */}
-                <TouchableOpacity style={styles.aiModalCloseIcon} onPress={() => setAiModalVisible(false)}>
-                   <Ionicons name="close" size={20} color={colors.text} />
-                </TouchableOpacity>
-             </View>
-         </View>
-       </Modal>
+      {/* --- MODAL AI --- */}
+      <Modal animationType="fade" transparent={true} visible={aiModalVisible} onRequestClose={() => setAiModalVisible(false)}>
+        <View style={styles.modalContainer}>
+            <TouchableOpacity style={styles.backdrop} onPress={() => setAiModalVisible(false)} />
+            <View style={[styles.aiModalContent, { backgroundColor: colors.card }]}>
+               <TouchableOpacity style={styles.aiModalCloseIcon} onPress={() => setAiModalVisible(false)}>
+                  <Ionicons name="close" size={20} color={colors.text} />
+               </TouchableOpacity>
+
+               <Text style={[styles.aiModalTitle, { color: colors.primary }]}>AI Rezumat Locație</Text>
+
+               {isGeneratingAiReview ? (
+                 <View style={styles.aiModalLoading}>
+                   <ActivityIndicator size="large" color={colors.primary} />
+                   <Text style={{ color: colors.subtext, marginTop: 10 }}>Se generează...</Text>
+                 </View>
+               ) : (
+                 aiReviewText && (
+                   <>
+                     <Text style={[styles.aiReviewText, { color: colors.text }]}>{aiReviewText}</Text>
+                     <View style={styles.aiModalFooter}>
+                        {hasRatedAiReview ? (
+                           <Text style={{ color: colors.subtext, fontStyle: "italic" }}>Mulțumim pentru feedback!</Text>
+                        ) : (
+                           <>
+                              <Text style={{ color: colors.text, marginRight: 10 }}>Te-a ajutat?</Text>
+                              <TouchableOpacity onPress={handleRateAIReview} style={{ marginRight: 10 }}>
+                                 <Ionicons name="happy-outline" size={30} color={colors.primary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity onPress={handleRateAIReview}>
+                                 <Ionicons name="sad-outline" size={30} color={colors.primary} />
+                              </TouchableOpacity>
+                           </>
+                        )}
+                     </View>
+                     <TouchableOpacity onPress={handleReportAIReview} style={styles.reportButton}>
+                        <Ionicons name="flag-outline" size={16} color={colors.subtext} />
+                        <Text style={[styles.reportButtonText, { color: colors.subtext }]}>Raportează Inexactitatea</Text>
+                     </TouchableOpacity>
+                   </>
+                 )
+               )}
+            </View>
+        </View>
+      </Modal>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  // ... Toate stilurile rămân EXACT cum erau în fișierul anterior ...
   modalContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1 },
   modalContent: { width: "90%", borderRadius: 20, overflow: "hidden", paddingBottom: 20, elevation: 10, zIndex: 2, maxHeight: "90%" },
@@ -257,6 +360,8 @@ const styles = StyleSheet.create({
   whatsappButton: { flexDirection: "row", backgroundColor: "#25D366", paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, justifyContent: "center", alignItems: "center", elevation: 3 },
   whatsappIcon: { width: 24, height: 24, marginRight: 10 },
   whatsappText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+  
+  // Oferte Styles
   offersModalContent: { width: "85%", borderRadius: 20, padding: 20, elevation: 15, zIndex: 5, maxHeight: "60%" },
   offersHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15, borderBottomWidth: 1, borderBottomColor: "#444", paddingBottom: 10 },
   offersTitle: { fontSize: 20, fontWeight: "bold" },
@@ -272,6 +377,8 @@ const styles = StyleSheet.create({
   offerPriceText: { fontSize: 14, fontWeight: 'bold' },
   activateButton: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
   activateButtonText: { fontSize: 12, fontWeight: "bold" },
+
+  // AI Styles
   aiModalContent: { width: "90%", borderRadius: 15, padding: 20, elevation: 12, minHeight: 250, zIndex: 2 },
   aiModalCloseIcon: { position: "absolute", top: 10, right: 10, padding: 5, zIndex: 10 },
   aiModalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 15, textAlign: "center" },

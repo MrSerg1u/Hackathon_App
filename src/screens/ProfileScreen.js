@@ -113,7 +113,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleExploreOffers = () => {
-    navigation.navigate("Search");
+    navigation.navigate("Search", { onlyPartners: true });
   };
 
   return (

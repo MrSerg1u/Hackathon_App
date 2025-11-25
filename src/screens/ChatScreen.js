@@ -5,27 +5,25 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { useTheme } from "../context/ThemeContext"; // Importăm hook-ul de temă
+import { useTheme } from "../context/ThemeContext"; 
 
 // Asumăm că locatii.json este accesibil
 import locatiiRaw from "../../locatii.json";
 
 import { GEMINI_API_KEY } from '../keys';
 
-// Import imaginea de WhatsApp (aceeași cale ca în HomeScreen)
-const WhatsAppIcon = require("../../assets/images/whatsapp.png");
+// IMPORTĂM COMPONENTA REUTILIZABILĂ
+import LocationDetailsModal from "../components/LocationDetailsModal";
 
-// --- CONSTANTE STATICE (Doar culorile de accent care nu se schimbă cu tema) ---
+// --- CONSTANTE STATICE ---
 const ACCENT_GOLD = "#D4AF37";
 
 // --- PRE-PROCESAREA DATELOR ---
@@ -35,7 +33,6 @@ const locatii = locatiiRaw.map((p, index) => ({
 }));
 
 // --- CONFIGURARE GEMINI API ---
-
 const API_KEY = GEMINI_API_KEY;
 const MODEL_NAME = "gemini-2.5-flash-preview-09-2025";
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
@@ -79,7 +76,6 @@ const findPlaceById = (id) => {
 // --- COMPONENTA PRINCIPALĂ CHATSCREEN ---
 
 export default function ChatScreen() {
-  // 1. Extragem tema și culorile
   const { colors, theme } = useTheme();
 
   const [messages, setMessages] = useState([
@@ -93,16 +89,17 @@ export default function ChatScreen() {
   const [inputMessage, setInputMessage] = useState("");
   const [isThinking, setIsThinking] = useState(false);
 
-  // State Modal (Identic cu HomeScreen/SearchScreen)
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState(null);
+  // --- MODIFICARE NUME VARIABILE PENTRU A EVITA CONFUZIA ---
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [currentChatSelectedPlace, setCurrentChatSelectedPlace] = useState(null);
 
   const flatListRef = useRef(null);
   const systemInstruction = useRef(buildSystemInstruction()).current;
 
-  const handleOpenModal = (location) => {
-    setSelectedLocation(location);
-    setModalVisible(true);
+  // --- HANDLER REDENUMIT ---
+  const handleShowDetails = (locationItem) => {
+    setCurrentChatSelectedPlace(locationItem);
+    setDetailsModalVisible(true);
   };
 
   const handleSendMessage = async () => {
@@ -189,7 +186,8 @@ export default function ChatScreen() {
         styles.placeCard,
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
-      onPress={() => handleOpenModal(place)}
+      // APELĂM HANDLER-UL REDENUMIT
+      onPress={() => handleShowDetails(place)}
     >
       <Image
         source={{
@@ -228,7 +226,6 @@ export default function ChatScreen() {
   // --- COMPONENTE MESAJE (Theme Aware) ---
   const UserMessage = ({ text }) => (
     <View style={styles.userMessageContainer}>
-      {/* Mesaj User: Background ACCENT_GOLD, text alb/negru */}
       <View
         style={[
           styles.messageBubble,
@@ -271,7 +268,6 @@ export default function ChatScreen() {
               color={colors.primary}
             />
           </View>
-          {/* Mesaj Bot: Background Card, Border */}
           <View
             style={[
               styles.messageBubble,
@@ -371,128 +367,13 @@ export default function ChatScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* --- MODAL DETALII LOCAȚIE (Modern & Consistent) --- */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <TouchableWithoutFeedback>
-            <View
-              style={[styles.modalContent, { backgroundColor: colors.card }]}
-            >
-              {selectedLocation && (
-                <>
-                  <View>
-                    <Image
-                      source={{ uri: selectedLocation.image_url }}
-                      style={styles.modalImage}
-                    />
-                    {/* Buton X */}
-                    <TouchableOpacity
-                      style={styles.closeIconBtn}
-                      onPress={() => setModalVisible(false)}
-                    >
-                      <Ionicons name="close" size={24} color="#000" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.modalBody}>
-                    <Text style={[styles.modalTitle, { color: colors.text }]}>
-                      {selectedLocation.name}
-                    </Text>
-
-                    {selectedLocation.partener && (
-                      <Text
-                        style={{
-                          color: colors.primary,
-                          fontWeight: "bold",
-                          marginBottom: 10,
-                        }}
-                      >
-                        ⭐ LOCAȚIE PARTENER
-                      </Text>
-                    )}
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <Ionicons
-                        name="location"
-                        size={18}
-                        color={colors.primary}
-                      />
-                      <Text
-                        style={[styles.modalAddress, { color: colors.subtext }]}
-                      >
-                        {selectedLocation.address}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={{
-                        color: colors.subtext,
-                        fontStyle: "italic",
-                        marginBottom: 5,
-                      }}
-                    >
-                      Tip: {selectedLocation.type.toUpperCase()}
-                    </Text>
-
-                    <Text style={[styles.modalDesc, { color: colors.text }]}>
-                      {selectedLocation.short_description}
-                    </Text>
-
-                    <View
-                      style={[
-                        styles.ratingContainer,
-                        { marginTop: 10, marginBottom: 20 },
-                      ]}
-                    >
-                      <Ionicons name="star" size={24} color={ACCENT_GOLD} />
-                      <Text
-                        style={{
-                          fontSize: 20,
-                          fontWeight: "bold",
-                          marginLeft: 5,
-                          color: colors.text,
-                        }}
-                      >
-                        {selectedLocation.rating}
-                      </Text>
-                    </View>
-
-                    {/* Buton Rezervă WhatsApp */}
-                    <TouchableOpacity
-                      style={styles.whatsappButton}
-                      onPress={() =>
-                        console.log("Rezervă la " + selectedLocation.name)
-                      }
-                    >
-                      <Image
-                        source={WhatsAppIcon}
-                        style={styles.whatsappIcon}
-                        resizeMode="contain"
-                      />
-                      <Text style={styles.whatsappText}>Rezervă</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
+      {/* --- MODAL DETALII LOCAȚIE (CU PROPS NOI) --- */}
+      <LocationDetailsModal
+        visible={detailsModalVisible}
+        location={currentChatSelectedPlace}
+        onClose={() => setDetailsModalVisible(false)}
+        // onPointsUpdate nu este necesar aici, deoarece Chat-ul nu afișează punctele
+      />
     </SafeAreaView>
   );
 }
@@ -647,89 +528,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 5,
-  },
-
-  // --- MODAL STYLES (CONSISTENT) ---
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    width: "100%",
-    borderRadius: 20,
-    overflow: "hidden",
-    paddingBottom: 20,
-    elevation: 10,
-  },
-  modalImage: {
-    width: "100%",
-    height: 200,
-    resizeMode: "cover",
-  },
-  modalBody: {
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 5,
-  },
-  modalAddress: {
-    fontSize: 14,
-  },
-  modalDesc: {
-    fontSize: 16,
-    marginTop: 10,
-    lineHeight: 22,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  // Buton X
-  closeIconBtn: {
-    position: "absolute",
-    top: 15,
-    right: 15,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: 20,
-    width: 36,
-    height: 36,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 5,
-    zIndex: 10,
-  },
-
-  // Buton WhatsApp
-  whatsappButton: {
-    flexDirection: "row",
-    backgroundColor: "#25D366",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    alignSelf: "flex-end",
-  },
-  whatsappIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-  },
-  whatsappText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
   },
 });
