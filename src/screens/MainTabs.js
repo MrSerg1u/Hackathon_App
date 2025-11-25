@@ -4,7 +4,7 @@ import { useTheme } from "../context/ThemeContext";
 
 // Importăm fiecare ecran din fișierul lui
 import ChatScreen from "./ChatScreen";
-import ExploreScreen from "./ExploreScreen";
+import ExploreScreen from "./FavoriteScreen";
 import HomeScreen from "./HomeScreen";
 import ProfileScreen from "./ProfileScreen";
 import SearchScreen from "./SearchScreen";
