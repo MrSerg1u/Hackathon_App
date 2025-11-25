@@ -20,7 +20,12 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.iuli338.SipSpot"
+      "package": "com.iuli338.SipSpot",
+      "config": {
+        "googleMaps": {
+          "apiKey": process.env.GOOGLE_MAPS_KEY_ANDROID,
+        }
+      }
     },
     "web": {
       "output": "single",
