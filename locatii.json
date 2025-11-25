@@ -10,7 +10,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1435224654926-ecc9f7fa028c",
     "short_description": "A quiet place, ideal for reading and study sessions. Excellent espresso.",
-    "rating": 4.8
+    "rating": 4.8,
+    "offers": [1, 2]
   },
   {
     "name": "Restaurant 'The Old Inn'",
@@ -36,7 +37,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1505483531331-fc3cf89fd382",
     "short_description": "Fast and tasty Asian food, a favorite among Polytechnic students.",
-    "rating": 4.2
+    "rating": 4.2,
+    "offers": [3]
   },
   {
     "name": "Café 'New World'",
@@ -62,7 +64,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
     "short_description": "Wood-fired oven pizza, authentic Italian ingredients. Excellent for groups.",
-    "rating": 4.6
+    "rating": 4.6,
+    "offers": [1, 4]
   },
   {
     "name": "Vegan Restaurant 'The Green Garden'",
@@ -75,7 +78,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e",
     "short_description": "Healthy, plant-based options. Fresh smoothies and delicious cream soups.",
-    "rating": 4.9
+    "rating": 4.9,
+    "offers": [2, 4]
   },
   {
     "name": "Coffee Shop 'By The Faculty'",
@@ -114,7 +118,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1470770841072-f978cf4d019e",
     "short_description": "An oasis of calm with over 50 types of tea and ambient music.",
-    "rating": 4.7
+    "rating": 4.7,
+    "offers": [1]
   },
   {
     "name": "Restaurant Pescaresc 'The Sea'",
@@ -153,7 +158,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1500534623283-312aade485b7",
     "short_description": "Board games, consoles, and coffee. An excellent place for socializing.",
-    "rating": 4.1
+    "rating": 4.1,
+    "offers": [2, 3]
   },
   {
     "name": "Trattoria 'Bella Vita'",
@@ -166,7 +172,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1462331940025-496dfbfc7564",
     "short_description": "Homemade pasta and Italian wines. Mediterranean atmosphere.",
-    "rating": 4.6
+    "rating": 4.6,
+    "offers": [1, 4]
   },
   {
     "name": "Bread and Coffee",
@@ -205,7 +212,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1505483531331-fc3cf89fd382",
     "short_description": "Traditional Transylvanian food, next to the Medieval Citadel.",
-    "rating": 4.4
+    "rating": 4.4,
+    "offers": [1]
   },
   {
     "name": "Smoothie Bar 'Energy'",
@@ -231,7 +239,8 @@
     },
     "image_url": "https://images.unsplash.com/photo-1469474968028-56623f02e42e",
     "short_description": "Fixed (lunch) menu, cheap and tasty, just like home.",
-    "rating": 4.3
+    "rating": 4.3,
+    "offers": [4]
   },
   {
     "name": "Irish Pub 'The Shamrock'",
@@ -257,6 +266,7 @@
     },
     "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
     "short_description": "Minimalist design, specialty coffee, and relaxing background music.",
-    "rating": 4.7
+    "rating": 4.7,
+    "offers": [2]
   }
 ]

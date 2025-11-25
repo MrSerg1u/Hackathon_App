@@ -24,6 +24,8 @@ import MapView, {
   PROVIDER_DEFAULT,
   PROVIDER_GOOGLE,
 } from "react-native-maps";
+import { useFocusEffect } from "@react-navigation/native"; // IMPORT NOU
+import AsyncStorage from "@react-native-async-storage/async-storage"; // IMPORT NOU
 import locatii from "../../locatii.json";
 import { useTheme } from "../context/ThemeContext";
 
@@ -193,10 +195,75 @@ export default function HomeScreen({ navigation }) {
   const [selectedPlace, setSelectedPlace] = useState(null);
 
   const [isFeedExpanded, setIsFeedExpanded] = useState(false);
-  const [coffeePoints, setCoffeePoints] = useState(125);
+  
+  // State-uri noi pentru Puncte și Cadou
+  const [coffeePoints, setCoffeePoints] = useState(0);
+  const [isGiftModalVisible, setIsGiftModalVisible] = useState(false);
 
   const mapRef = useRef(null);
   const translateY = useRef(new Animated.Value(0)).current;
+
+  // --- LOGICA PUNCTE & CADOU ---
+  const loadUserDataAndCheckGift = async () => {
+    try {
+      const email = await AsyncStorage.getItem("user_session");
+      if (!email) return;
+
+      // 1. Încărcare puncte existente
+      const pointsKey = `user_points_${email}`;
+      const savedPoints = await AsyncStorage.getItem(pointsKey);
+      
+      let currentPoints = 0;
+      if (savedPoints !== null) {
+        currentPoints = parseInt(savedPoints, 10);
+      }
+      setCoffeePoints(currentPoints);
+
+      // 2. Verificare dacă a primit cadoul
+      const giftKey = `gift_claimed_${email}`;
+      const giftClaimed = await AsyncStorage.getItem(giftKey);
+
+      if (giftClaimed !== "true") {
+        // Dacă nu a primit cadoul, afișăm modalul
+        setTimeout(() => {
+            setIsGiftModalVisible(true);
+        }, 1000); // Mică întârziere pentru UX
+      }
+
+    } catch (e) {
+      console.error("Eroare incarcare puncte home:", e);
+    }
+  };
+
+  const handleAcceptGift = async () => {
+    try {
+      const email = await AsyncStorage.getItem("user_session");
+      if (!email) return;
+
+      const pointsKey = `user_points_${email}`;
+      const giftKey = `gift_claimed_${email}`;
+
+      // Calculăm noile puncte (curente + 2000)
+      const newPoints = coffeePoints + 2000;
+
+      // Salvăm în storage
+      await AsyncStorage.setItem(pointsKey, newPoints.toString());
+      await AsyncStorage.setItem(giftKey, "true");
+
+      // Actualizăm UI
+      setCoffeePoints(newPoints);
+      setIsGiftModalVisible(false);
+    } catch (e) {
+      console.error("Eroare salvare cadou:", e);
+    }
+  };
+
+  // Folosim useFocusEffect pentru a reîncărca datele când userul revine pe ecran
+  useFocusEffect(
+    useCallback(() => {
+      loadUserDataAndCheckGift();
+    }, [])
+  );
 
   const toggleFeedSize = () => {
     const toValue = isFeedExpanded ? 0 : -DRAG_RANGE;
@@ -252,13 +319,11 @@ export default function HomeScreen({ navigation }) {
     [calculateDistance]
   );
 
-  // Definim openDetailsModal înainte de a fi folosit în mapMarkers
   const openDetailsModal = useCallback((item) => {
     setSelectedPlace(item);
     setDetailsModalVisible(true);
   }, []);
 
-  // --- MEMOIZED MARKERS ---
   const mapMarkers = useMemo(() => {
     return allPlaces.map((place) => (
       <Marker
@@ -270,7 +335,7 @@ export default function HomeScreen({ navigation }) {
         title={place.name}
         pinColor={topPlaces.some((p) => p.name === place.name) ? "red" : "gold"}
         tracksViewChanges={false}
-        onPress={() => openDetailsModal(place)} // <--- Deschide modalul la apăsare
+        onPress={() => openDetailsModal(place)}
       />
     ));
   }, [allPlaces, topPlaces, openDetailsModal]);
@@ -452,6 +517,35 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
+      {/* --- MODAL CADOU (GIFT MODAL) --- */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isGiftModalVisible}
+        onRequestClose={() => {}} // Nu permitem închiderea prin back button
+      >
+        <View style={styles.giftBackdrop}>
+           <View style={[styles.giftContainer, { backgroundColor: colors.card }]}>
+              <Image source={CoffeeBeanSVG} style={styles.giftIcon} />
+              <Text style={[styles.giftTitle, {color: colors.text}]}>
+                Un mic cadou din partea noastră!
+              </Text>
+              <Text style={[styles.giftSubtitle, {color: colors.subtext}]}>
+                Mulțumim că ești alături de noi. Ai primit:
+              </Text>
+              <Text style={[styles.giftPoints, {color: colors.primary}]}>
+                2000 Puncte
+              </Text>
+              <TouchableOpacity 
+                style={[styles.giftButton, { backgroundColor: colors.primary }]}
+                onPress={handleAcceptGift}
+              >
+                <Text style={styles.giftButtonText}>Acceptă</Text>
+              </TouchableOpacity>
+           </View>
+        </View>
+      </Modal>
+
       {/* MAPA IZOLATĂ */}
       <View style={styles.mapContainer}>
         {initialRegion && (
@@ -531,6 +625,7 @@ export default function HomeScreen({ navigation }) {
         visible={detailsModalVisible}
         location={selectedPlace}
         onClose={() => setDetailsModalVisible(false)}
+        onPointsUpdate={loadUserDataAndCheckGift}
       />
     </View>
   );
@@ -651,4 +746,51 @@ const styles = StyleSheet.create({
   },
   modalItem: { padding: 15, borderRadius: 8, marginVertical: 4 },
   modalItemText: { fontSize: 16 },
+
+  // --- STILURI CADOU ---
+  giftBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.85)", // Fundal întunecat opac
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  giftContainer: {
+    width: "80%",
+    borderRadius: 20,
+    padding: 30,
+    alignItems: "center",
+    elevation: 10,
+  },
+  giftIcon: {
+    width: 60, 
+    height: 60,
+    resizeMode: 'contain',
+    marginBottom: 20
+  },
+  giftTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  giftSubtitle: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  giftPoints: {
+    fontSize: 32,
+    fontWeight: "bold",
+    marginBottom: 30,
+  },
+  giftButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 25,
+  },
+  giftButtonText: {
+    color: "#000", // Sau #FFF in functie de contrastul cu primary
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 });

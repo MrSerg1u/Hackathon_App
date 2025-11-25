@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native"; // IMPORT NOU
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react"; // ADDED useCallback
 import {
   Alert,
   Image,
@@ -19,48 +20,62 @@ import { useTheme } from "../context/ThemeContext";
 export default function ProfileScreen({ navigation }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [points, setPoints] = useState(1250);
+  const [points, setPoints] = useState(0); // Initial 0
   const [profileImage, setProfileImage] = useState(null);
 
   const [modalVisible, setModalVisible] = useState(false);
 
   const { colors, theme, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        // 1. Încărcăm sesiunea (ACUM ESTE DOAR UN STRING/EMAIL)
-        const sessionEmail = await AsyncStorage.getItem("user_session");
-        
-        if (sessionEmail) {
-          setEmail(sessionEmail);
+  // Funcția de încărcare a datelor
+  const getUserData = async () => {
+    try {
+      // 1. Încărcăm sesiunea
+      const sessionEmail = await AsyncStorage.getItem("user_session");
+      
+      if (sessionEmail) {
+        setEmail(sessionEmail);
 
-          // 2. Căutăm detaliile complete (Nume) în lista utilizatorilor înregistrați
-          const usersString = await AsyncStorage.getItem("registered_users");
-          if (usersString) {
-            const users = JSON.parse(usersString);
-            const currentUser = users.find(u => u.email === sessionEmail);
-            if (currentUser) {
-                setName(currentUser.name);
-            }
-          }
-
-          // 3. Încărcăm imaginea SPECIFICĂ acestui utilizator
-          const uniqueImageKey = `profile_image_${sessionEmail}`;
-          const savedImage = await AsyncStorage.getItem(uniqueImageKey);
-
-          if (savedImage) {
-            setProfileImage(savedImage);
-          } else {
-            setProfileImage(null); 
+        // 2. Căutăm detaliile (Nume)
+        const usersString = await AsyncStorage.getItem("registered_users");
+        if (usersString) {
+          const users = JSON.parse(usersString);
+          const currentUser = users.find(u => u.email === sessionEmail);
+          if (currentUser) {
+              setName(currentUser.name);
           }
         }
-      } catch (e) {
-        console.error("Failed to load user data", e);
+
+        // 3. Încărcăm imaginea SPECIFICĂ
+        const uniqueImageKey = `profile_image_${sessionEmail}`;
+        const savedImage = await AsyncStorage.getItem(uniqueImageKey);
+        if (savedImage) {
+          setProfileImage(savedImage);
+        } else {
+          setProfileImage(null); 
+        }
+
+        // 4. Încărcăm PUNCTELE specifice utilizatorului
+        const pointsKey = `user_points_${sessionEmail}`;
+        const savedPoints = await AsyncStorage.getItem(pointsKey);
+        if (savedPoints !== null) {
+            setPoints(parseInt(savedPoints, 10));
+        } else {
+            setPoints(0);
+        }
       }
-    };
-    getUserData();
-  }, []);
+    } catch (e) {
+      console.error("Failed to load user data", e);
+    }
+  };
+
+  // Folosim useFocusEffect ca să fim siguri că punctele sunt actualizate
+  // dacă tocmai le-am primit în HomeScreen
+  useFocusEffect(
+    useCallback(() => {
+      getUserData();
+    }, [])
+  );
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -84,7 +99,7 @@ export default function ProfileScreen({ navigation }) {
       const imageUri = result.assets[0].uri;
       setProfileImage(imageUri);
 
-      // 4. Salvăm imaginea folosind cheia UNICĂ a utilizatorului (email)
+      // Salvăm imaginea folosind cheia UNICĂ a utilizatorului (email)
       if (email) {
         const uniqueImageKey = `profile_image_${email}`;
         await AsyncStorage.setItem(uniqueImageKey, imageUri);
@@ -94,7 +109,6 @@ export default function ProfileScreen({ navigation }) {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("user_session");
-    // Opțional: Nu ștergem 'onboarding_complete' ca să nu arătăm welcome screen la re-logare pe același cont
     navigation.reset({ index: 0, routes: [{ name: "Login" }] });
   };
 

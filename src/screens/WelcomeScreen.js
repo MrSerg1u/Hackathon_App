@@ -25,15 +25,18 @@ const Slide = ({ item, colors, styles }) => (
   <ImageBackground
     source={WelcomeBackground}
     style={styles.imageBackground}
-    blurRadius={5} // Blur puțin mai subtil
+    blurRadius={5}
   >
     <View style={styles.darkOverlay} />
     <View style={[styles.slideContent]}>
-      {/* Textul principal AURIU */}
+      {/* Titlul rămâne AURIU (Important) */}
       <Text style={[styles.title, { color: colors.primary }]}>{item.title}</Text>
-      <Text style={[styles.subtitle, { color: colors.primary }]}>
+      
+      {/* Subtitlul devine ALB (Text basic) */}
+      <Text style={[styles.subtitle, { color: "#FFFFFF" }]}>
         {item.subtitle}
       </Text>
+      
       {item.content && <View style={styles.contentArea}>{item.content}</View>}
     </View>
   </ImageBackground>
@@ -63,6 +66,7 @@ export default function WelcomeScreen({ navigation }) {
               key={index}
               style={[styles.tag, { borderColor: colors.primary }]}
             >
+              {/* Tag-urile rămân AURII (Cuvinte cheie) */}
               <Text style={[styles.tagText, { color: colors.primary }]}>
                 {type}
               </Text>
@@ -91,11 +95,12 @@ export default function WelcomeScreen({ navigation }) {
               size={24}
               color={colors.primary}
             />
+            {/* Titlu funcție: AURIU */}
             <Text style={[styles.aiFeatureTitle, { color: colors.primary }]}>
               AI Chat
             </Text>
-            {/* Text descriere AURIU */}
-            <Text style={[styles.aiFeatureDesc, { color: colors.primary }]}>
+            {/* Descriere funcție: ALB (Text basic) */}
+            <Text style={[styles.aiFeatureDesc, { color: "#FFFFFF" }]}>
               Îți rafinează selecția până la localul perfect.
             </Text>
           </View>
@@ -109,11 +114,12 @@ export default function WelcomeScreen({ navigation }) {
             ]}
           >
             <Ionicons name="bulb-outline" size={24} color={colors.primary} />
+            {/* Titlu funcție: AURIU */}
             <Text style={[styles.aiFeatureTitle, { color: colors.primary }]}>
               AI Rezumat
             </Text>
-            {/* Text descriere AURIU */}
-            <Text style={[styles.aiFeatureDesc, { color: colors.primary }]}>
+            {/* Descriere funcție: ALB (Text basic) */}
+            <Text style={[styles.aiFeatureDesc, { color: "#FFFFFF" }]}>
               Te ajută să te decizi dacă locul este potrivit pentru tine.
             </Text>
           </View>
@@ -142,16 +148,20 @@ export default function WelcomeScreen({ navigation }) {
             }}
           >
             <Image source={CoffeeBeanIcon} style={styles.coffeeBeanIcon} />
+            {/* Numele programului: AURIU */}
             <Text style={[styles.loyaltyTitle, { color: colors.primary }]}>
               Boabe de Loialitate
             </Text>
           </View>
-          {/* Text descriere AURIU */}
-          <Text style={[styles.loyaltyDesc, { color: colors.primary }]}>
+          
+          {/* Descrierea lungă: ALB (Text basic) */}
+          <Text style={[styles.loyaltyDesc, { color: "#FFFFFF" }]}>
             Sunt câștigate la localurile Partenere și pot fi cheltuite pe oferte
             exclusive:
           </Text>
+          
           <View style={styles.loyaltyBenefits}>
+            {/* Beneficiile rămân AURII (Sunt importante/recompense) */}
             <Text style={[styles.benefitText, { color: colors.primary }]}>
               • Reduceri de preț
             </Text>
@@ -213,7 +223,7 @@ export default function WelcomeScreen({ navigation }) {
                   backgroundColor:
                     index === currentIndex
                       ? colors.primary
-                      : "rgba(212, 175, 55, 0.3)", // Auriu transparent pentru inactiv
+                      : "rgba(212, 175, 55, 0.3)",
                 },
               ]}
             />
@@ -267,7 +277,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.85)", // Fundal întunecat
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
     zIndex: 1,
   },
   slideContent: {
@@ -295,6 +305,7 @@ const styles = StyleSheet.create({
     maxWidth: "90%",
     lineHeight: 24,
     fontWeight: "500",
+    // Culoarea este setată dinamic în componentă la #FFFFFF
   },
   contentArea: { width: "100%", justifyContent: "center", alignItems: "center" },
   tagContainer: {
@@ -339,7 +350,7 @@ const styles = StyleSheet.create({
     width: "95%",
   },
   coffeeBeanIcon: {
-    width: 20, // Redus la 20x20
+    width: 20,
     height: 20,
     resizeMode: "contain",
     marginRight: 10,
