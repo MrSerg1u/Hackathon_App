@@ -151,11 +151,11 @@ export default function ProfileScreen({ navigation }) {
           ]}
         >
           <Text style={[styles.cardTitle, { color: colors.text }]}>
-            Account personal info:
+            Date personale:
           </Text>
 
           <View style={styles.infoRow}>
-            <Text style={[styles.label, { color: colors.subtext }]}>Name:</Text>
+            <Text style={[styles.label, { color: colors.subtext }]}>Nume:</Text>
             <Text style={[styles.value, { color: colors.text }]}>
               {name || "Utilizator"}
             </Text>
@@ -172,7 +172,7 @@ export default function ProfileScreen({ navigation }) {
 
           <View style={styles.infoRow}>
             <Text style={[styles.label, { color: colors.subtext }]}>
-              Phone:
+              Telefon:
             </Text>
             <Text style={[styles.value, { color: colors.text }]}>
               +40 712 345 678
@@ -188,7 +188,7 @@ export default function ProfileScreen({ navigation }) {
           ]}
         >
           <Text style={[styles.cardTitle, { color: colors.text }]}>
-            Loyalty info:
+            Loialitate:
           </Text>
 
           <View style={styles.diamondContainer}>
@@ -203,7 +203,7 @@ export default function ProfileScreen({ navigation }) {
                 {points}
               </Text>
               <Text style={[styles.pointsLabel, { color: colors.subtext }]}>
-                Points
+                Puncte
               </Text>
             </View>
           </View>
@@ -213,7 +213,7 @@ export default function ProfileScreen({ navigation }) {
             onPress={handleExploreOffers}
           >
             <Text style={[styles.exploreText, { color: colors.text }]}>
-              Explore offers...
+              Explorează oferte...
             </Text>
           </TouchableOpacity>
         </View>
@@ -229,7 +229,7 @@ export default function ProfileScreen({ navigation }) {
               style={{ marginRight: 10 }}
             />
             <Text style={{ color: colors.text, fontWeight: "500" }}>
-              Dark Mode
+              Temă întunecată
             </Text>
           </View>
           <Switch
@@ -249,7 +249,7 @@ export default function ProfileScreen({ navigation }) {
           onPress={() => setModalVisible(true)}
         >
           <Text style={[styles.seeMoreText, { color: colors.text }]}>
-            See more...
+            Mai mult...
           </Text>
         </TouchableOpacity>
 

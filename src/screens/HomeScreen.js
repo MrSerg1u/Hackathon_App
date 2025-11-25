@@ -1,34 +1,45 @@
-import { Ionicons } from "@expo/vector-icons"; // Avem nevoie de Ionicons pentru Modal
 import * as Location from "expo-location";
-import { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
   FlatList,
   Image,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback, // Pentru închiderea modalului
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, {
+  Marker,
+  PROVIDER_DEFAULT,
+  PROVIDER_GOOGLE,
+} from "react-native-maps";
 import locatii from "../../locatii.json";
 import { useTheme } from "../context/ThemeContext";
 
-// Import imagini
-const CoffeeBeanSVG = require("../../assets/images/coffee_bean.png");
-const WhatsAppIcon = require("../../assets/images/whatsapp.png");
+// IMPORTURI COMPONENTE
+import LocationCard from "../components/LocationCard";
+import LocationDetailsModal from "../components/LocationDetailsModal";
 
+const CoffeeBeanSVG = require("../../assets/images/coffee_bean.png");
 const { height } = Dimensions.get("window");
 
-// Definirea înălțimilor Feed-ului
-const INITIAL_FEED_HEIGHT = height * 0.25;
-const FULL_FEED_HEIGHT = height * 0.5;
+// --- DIMENSIUNI FEED ---
+const MAX_FEED_HEIGHT = height * 0.55;
+const MIN_FEED_HEIGHT = height * 0.28;
+const DRAG_RANGE = MAX_FEED_HEIGHT - MIN_FEED_HEIGHT;
 
-// Stil JSON pentru harta Dark Mode
+// --- STIL HARTA DARK ---
 const DARK_MAP_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
   { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
@@ -143,8 +154,32 @@ const CITY_OPTIONS = [
   },
 ];
 
+// --- COMPONENTĂ MAPĂ IZOLATĂ ---
+const MemoizedMap = React.memo(
+  ({ mapRef, region, userLocation, markers, themeStyle }) => {
+    return (
+      <MapView
+        ref={mapRef}
+        provider={
+          Platform.OS === "android" ? PROVIDER_GOOGLE : PROVIDER_DEFAULT
+        }
+        style={StyleSheet.absoluteFillObject}
+        initialRegion={region}
+        showsUserLocation={!!userLocation}
+        showsMyLocationButton={false}
+        loadingEnabled={true}
+        customMapStyle={themeStyle}
+        moveOnMarkerPress={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
+      >
+        {markers}
+      </MapView>
+    );
+  }
+);
+
 export default function HomeScreen({ navigation }) {
-  // 1. Extragem culorile și tema curentă
   const { colors, theme } = useTheme();
 
   const [referenceLocation, setReferenceLocation] = useState(null);
@@ -153,79 +188,29 @@ export default function HomeScreen({ navigation }) {
   const [allPlaces, setAllPlaces] = useState([]);
   const [selectedCity, setSelectedCity] = useState(CITY_OPTIONS[0]);
 
-  // State pentru Modalul de Oraș
   const [isCityModalVisible, setIsCityModalVisible] = useState(false);
-
-  // State pentru Modalul de Detalii Locație (ca în SearchScreen)
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
 
-  const [isFeedFull, setIsFeedFull] = useState(false);
+  const [isFeedExpanded, setIsFeedExpanded] = useState(false);
   const [coffeePoints, setCoffeePoints] = useState(125);
 
   const mapRef = useRef(null);
-  const feedHeight = useRef(new Animated.Value(INITIAL_FEED_HEIGHT)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
 
-  // --- ANIMAȚIE FEED ---
-  const animateFeed = (toValue) => {
-    Animated.timing(feedHeight, {
+  const toggleFeedSize = () => {
+    const toValue = isFeedExpanded ? 0 : -DRAG_RANGE;
+
+    Animated.timing(translateY, {
       toValue,
       duration: 300,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start(() => {
-      setIsFeedFull(toValue === FULL_FEED_HEIGHT);
+      setIsFeedExpanded(!isFeedExpanded);
     });
   };
 
-  const toggleFeedSize = () => {
-    if (isFeedFull) {
-      animateFeed(INITIAL_FEED_HEIGHT);
-    } else {
-      animateFeed(FULL_FEED_HEIGHT);
-    }
-  };
-
-  // --- NAVIGARE ---
-  const navigateToSearch = () => {
-    if (navigation) navigation.navigate("Search");
-  };
-
-  const navigateToProfile = () => {
-    if (navigation) navigation.navigate("Profile");
-  };
-
-  // --- LOGICĂ LOCAȚIE & HARTĂ ---
-  const handleCityChange = (city) => {
-    let newLocation;
-
-    if (city.value === "User" && userLocation) {
-      newLocation = userLocation;
-    } else if (city.value === "User" && !userLocation) {
-      newLocation = CITY_OPTIONS.find((c) => c.value === "Galati");
-      setSelectedCity(newLocation);
-    } else {
-      newLocation = city;
-    }
-
-    setSelectedCity(city);
-    setIsCityModalVisible(false);
-
-    if (mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: newLocation.latitude,
-          longitude: newLocation.longitude,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        },
-        1000
-      );
-    }
-
-    updatePlaces(newLocation.latitude, newLocation.longitude);
-  };
-
-  const getDistance = (lat1, lon1, lat2, lon2) => {
+  const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -237,86 +222,152 @@ export default function HomeScreen({ navigation }) {
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
-  };
+  }, []);
 
-  const updatePlaces = (refLat, refLong) => {
-    setReferenceLocation({ latitude: refLat, longitude: refLong });
+  const updatePlaces = useCallback(
+    (refLat, refLong) => {
+      if (!refLat || !refLong) return;
+      setReferenceLocation({ latitude: refLat, longitude: refLong });
 
-    const placesWithDistance = locatii.map((place) => ({
-      ...place,
-      distance: getDistance(
-        refLat,
-        refLong,
-        place.coordinates.lat,
-        place.coordinates.long
-      ),
-    }));
+      const placesWithDistance = locatii.map((place) => ({
+        ...place,
+        distance: calculateDistance(
+          refLat,
+          refLong,
+          place.coordinates.lat,
+          place.coordinates.long
+        ),
+      }));
 
-    setAllPlaces(placesWithDistance);
+      setAllPlaces(placesWithDistance);
 
-    const nearby = placesWithDistance
-      .sort((a, b) => a.distance - b.distance)
-      .slice(0, 5)
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 2);
+      const nearby = [...placesWithDistance]
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 15)
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, 5);
 
-    setTopPlaces(nearby);
+      setTopPlaces(nearby);
+    },
+    [calculateDistance]
+  );
+
+  // Definim openDetailsModal înainte de a fi folosit în mapMarkers
+  const openDetailsModal = useCallback((item) => {
+    setSelectedPlace(item);
+    setDetailsModalVisible(true);
+  }, []);
+
+  // --- MEMOIZED MARKERS ---
+  const mapMarkers = useMemo(() => {
+    return allPlaces.map((place) => (
+      <Marker
+        key={place.name}
+        coordinate={{
+          latitude: place.coordinates.lat,
+          longitude: place.coordinates.long,
+        }}
+        title={place.name}
+        pinColor={topPlaces.some((p) => p.name === place.name) ? "red" : "gold"}
+        tracksViewChanges={false}
+        onPress={() => openDetailsModal(place)} // <--- Deschide modalul la apăsare
+      />
+    ));
+  }, [allPlaces, topPlaces, openDetailsModal]);
+
+  const handleCityChange = (city) => {
+    let newLocation = city;
+    if (city.value === "User" && !userLocation) {
+      const fallback =
+        CITY_OPTIONS.find((c) => c.value === "Galati") || CITY_OPTIONS[0];
+      newLocation = fallback;
+      setSelectedCity(fallback);
+    } else {
+      setSelectedCity(city);
+      if (city.value === "User" && userLocation) {
+        newLocation = {
+          ...city,
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        };
+      }
+    }
+    setIsCityModalVisible(false);
+
+    if (mapRef.current && newLocation && newLocation.latitude) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: newLocation.latitude,
+          longitude: newLocation.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        },
+        800
+      );
+      updatePlaces(newLocation.latitude, newLocation.longitude);
+    }
   };
 
   useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        try {
-          let currentLocation = await Location.getCurrentPositionAsync({});
-          setUserLocation(currentLocation.coords);
-        } catch (error) {
-          console.log("Nu s-a putut prelua locația utilizatorului.");
+    let isMounted = true;
+    const initApp = async () => {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (!isMounted) return;
+        if (status === "granted") {
+          let loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (isMounted) setUserLocation(loc.coords);
         }
+        const initialRef =
+          CITY_OPTIONS.find((c) => c.value === "Galati") || CITY_OPTIONS[0];
+        if (isMounted && initialRef)
+          updatePlaces(initialRef.latitude, initialRef.longitude);
+      } catch (e) {
+        console.log(e);
       }
-      let initialRef = CITY_OPTIONS.find((c) => c.value === "Galati");
-      updatePlaces(initialRef.latitude, initialRef.longitude);
-    })();
-  }, []);
+    };
+    initApp();
+    return () => {
+      isMounted = false;
+    };
+  }, [updatePlaces]);
 
-  const initialRegion = referenceLocation
-    ? {
-        latitude: referenceLocation.latitude,
-        longitude: referenceLocation.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      }
-    : null;
+  const renderFeedItem = useCallback(
+    ({ item }) => (
+      <LocationCard
+        item={item}
+        onPress={() => openDetailsModal(item)}
+        showDistance={true}
+      />
+    ),
+    [openDetailsModal]
+  );
 
-  // --- MODAL DETALII (Logica din SearchScreen) ---
-  const openDetailsModal = (item) => {
-    setSelectedPlace(item);
-    setDetailsModalVisible(true);
-  };
+  const navigateToSearch = () => navigation?.navigate("Search");
+  const navigateToProfile = () => navigation?.navigate("Profile");
 
-  // Componenta Footer pentru FlatList
-  const ListFooter = () => (
-    <TouchableOpacity
-      style={[
-        styles.seeMoreButton,
-        { borderColor: "#D4AF37", backgroundColor: colors.card },
-      ]}
-      onPress={navigateToSearch}
-    >
-      <Text style={[styles.seeMoreText, { color: "#D4AF37" }]}>
-        Vezi mai mult...
-      </Text>
-    </TouchableOpacity>
+  const initialRegion = useMemo(
+    () =>
+      referenceLocation
+        ? {
+            latitude: referenceLocation.latitude,
+            longitude: referenceLocation.longitude,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          }
+        : null,
+    [referenceLocation]
   );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* HEADER CONTAINER */}
+      {/* HEADER */}
       <View style={styles.headerContainer}>
-        {/* Bara Căutare */}
         <TouchableOpacity
           style={styles.searchBarWrapper}
-          onPress={() => navigation.navigate("Search")}
+          onPress={navigateToSearch}
           activeOpacity={0.7}
         >
           <View pointerEvents="none">
@@ -329,14 +380,12 @@ export default function HomeScreen({ navigation }) {
                   borderColor: colors.border,
                 },
               ]}
-              placeholder="Căutare locuri, adrese..."
+              placeholder="Căutare locuri..."
               placeholderTextColor={colors.subtext}
               editable={false}
             />
           </View>
         </TouchableOpacity>
-
-        {/* Buton Puncte */}
         <TouchableOpacity
           style={[
             styles.coffeePointsButton,
@@ -355,25 +404,22 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Dropdown Oraș */}
+      {/* DROPDOWN */}
       <View style={styles.dropdownContainer}>
         <TouchableOpacity
           onPress={() => setIsCityModalVisible(true)}
           style={[
             styles.dropdownButton,
-            {
-              backgroundColor: colors.card,
-              borderColor: "#D4AF37",
-            },
+            { backgroundColor: colors.card, borderColor: "#D4AF37" },
           ]}
         >
           <Text style={[styles.dropdownText, { color: colors.text }]}>
-            {selectedCity.label}
+            {selectedCity?.label || "Selectează"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* MODAL ORAȘ (Listă simplă) */}
+      {/* MODAL ORAȘ */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -391,23 +437,14 @@ export default function HomeScreen({ navigation }) {
                 key={city.value}
                 style={[
                   styles.modalItem,
-                  city.value === selectedCity.value && {
+                  selectedCity?.value === city.value && {
                     backgroundColor: "#D4AF37" + "20",
                   },
                 ]}
                 onPress={() => handleCityChange(city)}
-                disabled={city.value === "User" && !userLocation}
               >
-                <Text
-                  style={[
-                    styles.modalItemText,
-                    { color: colors.text },
-                    city.value === "User" &&
-                      !userLocation && { color: colors.subtext },
-                  ]}
-                >
+                <Text style={[styles.modalItemText, { color: colors.text }]}>
                   {city.label}
-                  {city.value === "User" && !userLocation && " (Indisponibil)"}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -415,271 +452,92 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
-      {/* HARTA */}
+      {/* MAPA IZOLATĂ */}
       <View style={styles.mapContainer}>
         {initialRegion && (
-          <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={initialRegion}
-            showsUserLocation={!!userLocation}
-            loadingEnabled={true}
-            // Aplicăm Dark Style doar dacă tema este 'dark'
-            customMapStyle={theme === "dark" ? DARK_MAP_STYLE : []}
-          >
-            {allPlaces.map((place) => (
-              <Marker
-                key={place.name}
-                coordinate={{
-                  latitude: place.coordinates.lat,
-                  longitude: place.coordinates.long,
-                }}
-                title={place.name}
-                description={`${place.distance.toFixed(2)} km`}
-                pinColor={
-                  topPlaces.some((p) => p.name === place.name) ? "red" : "gold"
-                }
-              />
-            ))}
-          </MapView>
+          <MemoizedMap
+            mapRef={mapRef}
+            region={initialRegion}
+            userLocation={userLocation}
+            markers={mapMarkers}
+            themeStyle={theme === "dark" ? DARK_MAP_STYLE : []}
+          />
         )}
       </View>
 
-      {/* FEED (Lista Carduri) */}
+      {/* FEED ANIMAT */}
       <Animated.View
         style={[
           styles.feedContainer,
           {
-            height: feedHeight,
-            // Folosim o culoare ușor transparentă bazată pe tema curentă
+            height: MAX_FEED_HEIGHT,
             backgroundColor:
               theme === "dark"
-                ? "rgba(30, 30, 30, 0.95)"
-                : "rgba(255, 255, 255, 0.95)",
+                ? "rgba(30, 30, 30, 0.98)"
+                : "rgba(255, 255, 255, 0.98)",
             borderTopColor: colors.border,
             borderTopWidth: 1,
+            transform: [{ translateY: translateY }],
+            bottom: MIN_FEED_HEIGHT - MAX_FEED_HEIGHT,
           },
         ]}
       >
         <TouchableOpacity
           style={styles.notchHandleContainer}
           onPress={toggleFeedSize}
+          activeOpacity={0.9}
         >
           <View
             style={[styles.notchHandle, { backgroundColor: colors.subtext }]}
           />
         </TouchableOpacity>
 
-        <Text style={[styles.heading, { color: colors.text }]}>The Feed</Text>
+        <Text style={[styles.heading, { color: colors.text }]}>
+          Recomandări
+        </Text>
 
         <FlatList
           data={topPlaces}
           keyExtractor={(item) => item.name}
+          renderItem={renderFeedItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.flatListContent}
-          ListFooterComponent={ListFooter}
-          renderItem={({ item }) => (
-            // Aici am adăugat TouchableOpacity și onPress
+          getItemLayout={(data, index) => ({
+            length: 160,
+            offset: 160 * index,
+            index,
+          })}
+          initialNumToRender={4}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          removeClippedSubviews={true}
+          ListFooterComponent={
             <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => openDetailsModal(item)}
               style={[
-                styles.cardRow,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                },
+                styles.seeMoreButton,
+                { borderColor: "#D4AF37", backgroundColor: colors.card },
               ]}
+              onPress={navigateToSearch}
             >
-              <Image
-                source={{
-                  uri:
-                    item.image_url ||
-                    "https://placehold.co/100x100/333333/D4AF37?text=LOC",
-                }}
-                style={styles.photoRow}
-              />
-              <View style={styles.cardTextRow}>
-                {item.partener && (
-                  <Text
-                    style={[
-                      styles.partnerTag,
-                      { color: "#D4AF37", borderColor: "#D4AF37" },
-                    ]}
-                  >
-                    PARTENER
-                  </Text>
-                )}
-
-                <Text
-                  style={[styles.placeNameRow, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                <Text style={[styles.ratingRow, { color: "#D4AF37" }]}>
-                  ★ {item.rating}
-                </Text>
-                <Text
-                  style={[styles.descriptionRow, { color: colors.subtext }]}
-                  numberOfLines={2}
-                >
-                  {item.short_description}
-                </Text>
-                <Text style={[styles.distanceRow, { color: colors.subtext }]}>
-                  {item.distance.toFixed(2)} km distanță
-                </Text>
-              </View>
+              <Text style={[styles.seeMoreText, { color: "#D4AF37" }]}>
+                Vezi mai mult...
+              </Text>
             </TouchableOpacity>
-          )}
+          }
         />
       </Animated.View>
 
-      {/* --- MODAL DETALII (Identic cu SearchScreen) --- */}
-      <Modal
-        animationType="fade"
-        transparent={true}
+      <LocationDetailsModal
         visible={detailsModalVisible}
-        onRequestClose={() => setDetailsModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setDetailsModalVisible(false)}
-        >
-          <TouchableWithoutFeedback>
-            <View
-              style={[
-                styles.detailsModalContent,
-                { backgroundColor: colors.card },
-              ]}
-            >
-              {selectedPlace && (
-                <>
-                  <View>
-                    <Image
-                      source={{ uri: selectedPlace.image_url }}
-                      style={styles.detailsModalImage}
-                    />
-                    {/* Buton Close X */}
-                    <TouchableOpacity
-                      style={styles.closeIconBtn}
-                      onPress={() => setDetailsModalVisible(false)}
-                    >
-                      <Ionicons name="close" size={24} color="#000" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={styles.detailsModalBody}>
-                    <Text
-                      style={[styles.detailsModalTitle, { color: colors.text }]}
-                    >
-                      {selectedPlace.name}
-                    </Text>
-
-                    {selectedPlace.partener && (
-                      <Text
-                        style={{
-                          color: colors.primary,
-                          fontWeight: "bold",
-                          marginBottom: 10,
-                        }}
-                      >
-                        ⭐ LOCAȚIE PARTENER
-                      </Text>
-                    )}
-
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginBottom: 10,
-                      }}
-                    >
-                      <Ionicons
-                        name="location"
-                        size={18}
-                        color={colors.primary}
-                      />
-                      <Text
-                        style={[
-                          styles.detailsModalAddress,
-                          { color: colors.subtext },
-                        ]}
-                      >
-                        {selectedPlace.address}
-                      </Text>
-                    </View>
-
-                    <Text
-                      style={{
-                        color: colors.subtext,
-                        fontStyle: "italic",
-                        marginBottom: 5,
-                      }}
-                    >
-                      Tip:{" "}
-                      {selectedPlace.type
-                        ? selectedPlace.type.toUpperCase()
-                        : "N/A"}
-                    </Text>
-
-                    <Text
-                      style={[styles.detailsModalDesc, { color: colors.text }]}
-                    >
-                      {selectedPlace.short_description}
-                    </Text>
-
-                    <View
-                      style={[
-                        styles.ratingContainer,
-                        { marginTop: 10, marginBottom: 20 },
-                      ]}
-                    >
-                      <Ionicons name="star" size={24} color="#FFD700" />
-                      <Text
-                        style={{
-                          fontSize: 20,
-                          fontWeight: "bold",
-                          marginLeft: 5,
-                          color: colors.text,
-                        }}
-                      >
-                        {selectedPlace.rating}
-                      </Text>
-                    </View>
-
-                    {/* Buton WhatsApp */}
-                    <TouchableOpacity
-                      style={styles.whatsappButton}
-                      onPress={() =>
-                        console.log("Rezervă la " + selectedPlace.name)
-                      }
-                    >
-                      <Image
-                        source={WhatsAppIcon}
-                        style={styles.whatsappIcon}
-                        resizeMode="contain"
-                      />
-                      <Text style={styles.whatsappText}>Rezervă</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </View>
-          </TouchableWithoutFeedback>
-        </TouchableOpacity>
-      </Modal>
+        location={selectedPlace}
+        onClose={() => setDetailsModalVisible(false)}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 40,
-  },
+  container: { flex: 1, paddingTop: 40 },
   headerContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -687,10 +545,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     zIndex: 10,
   },
-  searchBarWrapper: {
-    flex: 1,
-    marginRight: 10,
-  },
+  searchBarWrapper: { flex: 1, marginRight: 10 },
   searchBar: {
     padding: 12,
     borderRadius: 15,
@@ -714,15 +569,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  coffeeBeanImage: {
-    width: 20,
-    height: 20,
-    marginRight: 4,
-  },
-  coffeePointsText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  coffeeBeanImage: { width: 20, height: 20, marginRight: 4 },
+  coffeePointsText: { fontSize: 16, fontWeight: "bold" },
   dropdownContainer: {
     paddingHorizontal: 15,
     paddingBottom: 10,
@@ -740,19 +588,10 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  dropdownText: {
-    fontSize: 14,
-  },
-  mapContainer: {
-    flex: 1,
-  },
-  map: {
-    width: "100%",
-    height: "100%",
-  },
+  dropdownText: { fontSize: 14 },
+  mapContainer: { flex: 1 },
   feedContainer: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
     borderTopLeftRadius: 20,
@@ -770,11 +609,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     marginTop: -5,
   },
-  notchHandle: {
-    width: 40,
-    height: 5,
-    borderRadius: 5,
-  },
+  notchHandle: { width: 40, height: 5, borderRadius: 5 },
   heading: {
     fontSize: 20,
     fontWeight: "bold",
@@ -782,63 +617,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 5,
   },
-  flatListContent: {
-    paddingVertical: 5,
-  },
-  // --- STILURI CARD FEED ---
-  cardRow: {
-    flexDirection: "row",
-    marginHorizontal: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    overflow: "hidden",
-    height: 150,
-  },
-  photoRow: {
-    width: 100,
-    height: "100%",
-    resizeMode: "cover",
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-  },
-  cardTextRow: {
-    flex: 1,
-    padding: 10,
-    justifyContent: "center",
-  },
-  partnerTag: {
-    fontSize: 10,
-    fontWeight: "bold",
-    alignSelf: "flex-end",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderRadius: 4,
-    marginTop: -5,
-  },
-  placeNameRow: {
-    fontWeight: "bold",
-    fontSize: 16,
-    marginBottom: 1,
-  },
-  ratingRow: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 2,
-  },
-  descriptionRow: {
-    fontSize: 10,
-  },
-  distanceRow: {
-    fontSize: 10,
-    fontStyle: "italic",
-    marginTop: 2,
-  },
+  flatListContent: { paddingVertical: 5 },
   seeMoreButton: {
     marginHorizontal: 15,
     marginTop: 5,
@@ -852,12 +631,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  seeMoreText: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-
-  // --- STILURI PENTRU MODALURI ---
+  seeMoreText: { fontSize: 16, fontWeight: "bold" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -875,74 +649,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 8,
   },
-  modalItem: {
-    padding: 15,
-    borderRadius: 8,
-    marginVertical: 4,
-  },
-  modalItemText: {
-    fontSize: 16,
-  },
-
-  // --- STILURI MODAL DETALII (Locație) ---
-  detailsModalContent: {
-    width: "100%",
-    borderRadius: 20,
-    overflow: "hidden",
-    paddingBottom: 20,
-    elevation: 10,
-  },
-  detailsModalImage: {
-    width: "100%",
-    height: 200,
-    resizeMode: "cover",
-  },
-  detailsModalBody: {
-    padding: 20,
-  },
-  detailsModalTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 5 },
-  detailsModalAddress: { fontSize: 14, marginLeft: 5 },
-  detailsModalDesc: { fontSize: 16, marginTop: 10, lineHeight: 22 },
-
-  closeIconBtn: {
-    position: "absolute",
-    top: 15,
-    right: 15,
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: 20,
-    width: 36,
-    height: 36,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 5,
-    zIndex: 10,
-  },
-  ratingContainer: { flexDirection: "row", alignItems: "center" },
-
-  whatsappButton: {
-    flexDirection: "row",
-    backgroundColor: "#25D366",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    alignSelf: "flex-end",
-  },
-  whatsappIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-  },
-  whatsappText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  modalItem: { padding: 15, borderRadius: 8, marginVertical: 4 },
+  modalItemText: { fontSize: 16 },
 });
