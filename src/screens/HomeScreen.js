@@ -34,10 +34,10 @@ import LocationDetailsModal from "../components/LocationDetailsModal";
 const CoffeeBeanSVG = require("../../assets/images/coffee_bean.png");
 const { height } = Dimensions.get("window");
 
-// --- DIMENSIUNI FEED (Fixe pentru performanță) ---
-const MAX_FEED_HEIGHT = height * 0.55; // Cât ocupă maxim (55% din ecran)
-const MIN_FEED_HEIGHT = height * 0.28; // Cât ocupă minim (28% din ecran)
-const DRAG_RANGE = MAX_FEED_HEIGHT - MIN_FEED_HEIGHT; // Cât trebuie să translatăm
+// --- DIMENSIUNI FEED ---
+const MAX_FEED_HEIGHT = height * 0.55;
+const MIN_FEED_HEIGHT = height * 0.28;
+const DRAG_RANGE = MAX_FEED_HEIGHT - MIN_FEED_HEIGHT;
 
 // --- STIL HARTA DARK ---
 const DARK_MAP_STYLE = [
@@ -154,7 +154,7 @@ const CITY_OPTIONS = [
   },
 ];
 
-// --- COMPONENTĂ MAPĂ IZOLATĂ (Previne re-randarea inutilă) ---
+// --- COMPONENTĂ MAPĂ IZOLATĂ ---
 const MemoizedMap = React.memo(
   ({ mapRef, region, userLocation, markers, themeStyle }) => {
     return (
@@ -166,12 +166,12 @@ const MemoizedMap = React.memo(
         style={StyleSheet.absoluteFillObject}
         initialRegion={region}
         showsUserLocation={!!userLocation}
-        showsMyLocationButton={false} // Ascundem butonul default pt performanță
+        showsMyLocationButton={false}
         loadingEnabled={true}
         customMapStyle={themeStyle}
         moveOnMarkerPress={false}
-        rotateEnabled={false} // Optimizare: dezactivare rotație
-        pitchEnabled={false} // Optimizare: dezactivare înclinare
+        rotateEnabled={false}
+        pitchEnabled={false}
       >
         {markers}
       </MapView>
@@ -196,18 +196,15 @@ export default function HomeScreen({ navigation }) {
   const [coffeePoints, setCoffeePoints] = useState(125);
 
   const mapRef = useRef(null);
-
-  // ANIMATION: Folosim translateY (GPU) în loc de Height (CPU)
-  // Pornim "translatat" în jos (collapsed)
   const translateY = useRef(new Animated.Value(0)).current;
 
   const toggleFeedSize = () => {
-    const toValue = isFeedExpanded ? 0 : -DRAG_RANGE; // 0 = Jos (Minim), -DRAG_RANGE = Sus (Maxim)
+    const toValue = isFeedExpanded ? 0 : -DRAG_RANGE;
 
     Animated.timing(translateY, {
       toValue,
       duration: 300,
-      useNativeDriver: true, // <--- CRITIC: Rulează pe GPU, nu blochează JS
+      useNativeDriver: true,
     }).start(() => {
       setIsFeedExpanded(!isFeedExpanded);
     });
@@ -246,30 +243,37 @@ export default function HomeScreen({ navigation }) {
 
       const nearby = [...placesWithDistance]
         .sort((a, b) => a.distance - b.distance)
-        .slice(0, 15) // Păstrăm puține în memorie pentru Top
+        .slice(0, 15)
         .sort((a, b) => b.rating - a.rating)
-        .slice(0, 5); // Afișăm doar 5 în feed
+        .slice(0, 5);
 
       setTopPlaces(nearby);
     },
     [calculateDistance]
   );
 
+  // Definim openDetailsModal înainte de a fi folosit în mapMarkers
+  const openDetailsModal = useCallback((item) => {
+    setSelectedPlace(item);
+    setDetailsModalVisible(true);
+  }, []);
+
   // --- MEMOIZED MARKERS ---
   const mapMarkers = useMemo(() => {
     return allPlaces.map((place) => (
       <Marker
-        key={place.name} // Ideal ar fi un ID unic
+        key={place.name}
         coordinate={{
           latitude: place.coordinates.lat,
           longitude: place.coordinates.long,
         }}
         title={place.name}
         pinColor={topPlaces.some((p) => p.name === place.name) ? "red" : "gold"}
-        tracksViewChanges={false} // CRITIC pentru performanță
+        tracksViewChanges={false}
+        onPress={() => openDetailsModal(place)} // <--- Deschide modalul la apăsare
       />
     ));
-  }, [allPlaces, topPlaces]);
+  }, [allPlaces, topPlaces, openDetailsModal]);
 
   const handleCityChange = (city) => {
     let newLocation = city;
@@ -299,7 +303,7 @@ export default function HomeScreen({ navigation }) {
           longitudeDelta: 0.0421,
         },
         800
-      ); // Durată mai scurtă la animație
+      );
       updatePlaces(newLocation.latitude, newLocation.longitude);
     }
   };
@@ -313,7 +317,7 @@ export default function HomeScreen({ navigation }) {
         if (status === "granted") {
           let loc = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
-          }); // Balanced e mai rapid
+          });
           if (isMounted) setUserLocation(loc.coords);
         }
         const initialRef =
@@ -329,11 +333,6 @@ export default function HomeScreen({ navigation }) {
       isMounted = false;
     };
   }, [updatePlaces]);
-
-  const openDetailsModal = useCallback((item) => {
-    setSelectedPlace(item);
-    setDetailsModalVisible(true);
-  }, []);
 
   const renderFeedItem = useCallback(
     ({ item }) => (
@@ -360,7 +359,7 @@ export default function HomeScreen({ navigation }) {
           }
         : null,
     [referenceLocation]
-  ); // Memoizăm regiunea inițială
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -466,21 +465,19 @@ export default function HomeScreen({ navigation }) {
         )}
       </View>
 
-      {/* FEED ANIMAT (TRANSLATE Y) */}
+      {/* FEED ANIMAT */}
       <Animated.View
         style={[
           styles.feedContainer,
           {
-            height: MAX_FEED_HEIGHT, // Înălțime FIXĂ, nu animăm height
+            height: MAX_FEED_HEIGHT,
             backgroundColor:
               theme === "dark"
                 ? "rgba(30, 30, 30, 0.98)"
                 : "rgba(255, 255, 255, 0.98)",
             borderTopColor: colors.border,
             borderTopWidth: 1,
-            // AICI E MAGIA: Mișcăm containerul în sus/jos
             transform: [{ translateY: translateY }],
-            // Îl poziționăm inițial "ascuns" parțial
             bottom: MIN_FEED_HEIGHT - MAX_FEED_HEIGHT,
           },
         ]}
@@ -505,14 +502,11 @@ export default function HomeScreen({ navigation }) {
           renderItem={renderFeedItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.flatListContent}
-          // OPTIMIZĂRI CRITICE PENTRU LISTA
-          getItemLayout={
-            (data, index) => ({
-              length: 160,
-              offset: 160 * index,
-              index,
-            }) // 160 e înălțimea cardului + margini
-          }
+          getItemLayout={(data, index) => ({
+            length: 160,
+            offset: 160 * index,
+            index,
+          })}
           initialNumToRender={4}
           maxToRenderPerBatch={2}
           windowSize={3}
@@ -595,9 +589,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   dropdownText: { fontSize: 14 },
-  mapContainer: { flex: 1 }, // Lăsăm loc pentru feed-ul minimizat
-
-  // Stil Feed Actualizat
+  mapContainer: { flex: 1 },
   feedContainer: {
     position: "absolute",
     left: 0,
