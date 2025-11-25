@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "HackathonApp",
-    "slug": "HackathonApp",
+    "name": "SipSpot",
+    "slug": "SipSpot",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hackathonapp",
+    "scheme": "SipSpot",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

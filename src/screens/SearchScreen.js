@@ -26,11 +26,11 @@ const TYPE_OPTIONS = [
 ];
 
 const RATING_OPTIONS = [
-  { label: "Excelent (4.0 - 5.0 ⭐)", min: 4.0, max: 5.0 },
-  { label: "Foarte Bun (3.0 - 3.9 ⭐)", min: 3.0, max: 3.99 },
-  { label: "Bun (2.0 - 2.9 ⭐)", min: 2.0, max: 2.99 },
-  { label: "Slăbuț (1.0 - 1.9 ⭐)", min: 1.0, max: 1.99 },
-  { label: "Nerecomandat (0 - 0.9 ⭐)", min: 0, max: 0.99 },
+  { label: "4.0 - 5.0 ⭐", min: 4.0, max: 5.0 },
+  { label: "3.0 - 3.9 ⭐", min: 3.0, max: 3.99 },
+  { label: "2.0 - 2.9 ⭐", min: 2.0, max: 2.99 },
+  { label: "1.0 - 1.9 ⭐", min: 1.0, max: 1.99 },
+  { label: "  0 - 0.9 ⭐", min: 0, max: 0.99 },
 ];
 
 export default function SearchScreen({ route }) {
@@ -124,9 +124,9 @@ export default function SearchScreen({ route }) {
     // Verificăm dacă este favorit
     const isFav = favoritesIds.includes(item.id || item.name);
     return (
-      <LocationCard 
-        item={item} 
-        onPress={() => openModal(item)} 
+      <LocationCard
+        item={item}
+        onPress={() => openModal(item)}
         isFavorite={isFav} // <--- Pasăm starea
       />
     );
