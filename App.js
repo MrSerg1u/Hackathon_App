@@ -5,55 +5,71 @@ import {
   NavigationContainer,
 } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import * as NavigationBar from "expo-navigation-bar";
+import { useEffect, useRef, useState } from "react";
+import { ActivityIndicator, AppState, Platform, View } from "react-native";
 
-// Importăm Contextul creat
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import MainTabs from "./src/screens/MainTabs";
 import RegisterScreen from "./src/screens/RegisterScreen";
-import WelcomeScreen from "./src/screens/WelcomeScreen"; // Importă WelcomeScreen
+import WelcomeScreen from "./src/screens/WelcomeScreen";
 
 const Stack = createStackNavigator();
 
-// Componenta care conține Navigația (separată pentru a putea folosi useTheme)
 const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState("Login");
   const { theme } = useTheme();
 
-  useEffect(() => {
-    const checkUserAndOnboarding = async () => {
-      let sessionCorrupted = false;
-      let userEmail = null;
+  const appState = useRef(AppState.currentState);
 
+  // --- FUNCȚIA CHEIE PENTRU ANDROID ---
+  const setAndroidNavigationBar = async () => {
+    try {
+      // 1. Setăm poziția absolută: Asta previne "săritura" layout-ului.
+      // Aplicația va ocupa tot ecranul din start, ignorând spațiul barei.
+      await NavigationBar.setPositionAsync("absolute");
+
+      // 2. O facem complet transparentă pentru a nu se vedea urât dacă apare accidental
+      await NavigationBar.setBackgroundColorAsync("#ffffff00");
+
+      // 3. O ascundem efectiv
+      await NavigationBar.setVisibilityAsync("hidden");
+
+      // 4. Comportament la swipe (reapare temporar peste aplicație)
+      await NavigationBar.setBehaviorAsync("overlay-swipe");
+    } catch (e) {
+      console.log("Eroare la setarea NavigationBar:", e);
+    }
+  };
+
+  useEffect(() => {
+    const initializeApp = async () => {
       try {
-        // Citim sesiunea stocată
+        if (Platform.OS === "android") {
+          await setAndroidNavigationBar();
+        }
+
         const storedSession = await AsyncStorage.getItem("user_session");
+        let userEmail = null;
 
         if (storedSession) {
-          // VERIFICARE CRITICĂ: Dacă sesiunea începe cu '{', înseamnă că e un JSON vechi (corupt)
-          // sau dacă nu conține '@', o considerăm nesigură.
-          if (storedSession.startsWith("{") || !storedSession.includes("@")) {
-            console.error(
-              "Sesiunea de utilizator este în format JSON vechi sau corupt. Resetare."
-            );
-            sessionCorrupted = true;
-          } else {
-            // Dacă trece de verificări, o tratăm ca string simplu (e-mail)
-            userEmail = storedSession;
+          try {
+            const userObj = JSON.parse(storedSession);
+            if (userObj && userObj.email) {
+              userEmail = userObj.email;
+            }
+          } catch (e) {
+            if (storedSession.includes("@")) {
+              userEmail = storedSession;
+            }
           }
         }
 
-        if (sessionCorrupted) {
-          // Ștergem sesiunea coruptă și mergem la Login
-          await AsyncStorage.removeItem("user_session");
-          setInitialRoute("Login");
-        } else if (userEmail) {
-          // Logica de navigare WelcomeScreen
-          const onboardingKey = `onboarding_complete${userEmail}`;
+        if (userEmail) {
+          const onboardingKey = `onboarding_complete_${userEmail}`;
           const onboardingComplete = await AsyncStorage.getItem(onboardingKey);
 
           if (onboardingComplete === "true") {
@@ -65,14 +81,30 @@ const AppNavigator = () => {
           setInitialRoute("Login");
         }
       } catch (e) {
-        // Acest catch prinde erorile de citire/stocare
-        console.error("Eroare la citirea sesiunii de utilizator:", e);
+        console.error("Eroare la inițializare:", e);
         setInitialRoute("Login");
       } finally {
         setIsLoading(false);
       }
     };
-    checkUserAndOnboarding();
+
+    initializeApp();
+
+    const subscription = AppState.addEventListener("change", (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === "active"
+      ) {
+        if (Platform.OS === "android") {
+          setAndroidNavigationBar();
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   if (isLoading) {
@@ -93,9 +125,7 @@ const AppNavigator = () => {
     );
   }
 
-  // Definirea temei de navigare
   const navTheme = theme === "dark" ? DarkTheme : DefaultTheme;
-  // Setăm culoarea primară a temei la auriu pentru un aspect unitar
   navTheme.colors.primary = "#D4AF37";
 
   return (
@@ -112,7 +142,7 @@ const AppNavigator = () => {
           options={{ title: "Creează Cont" }}
         />
         <Stack.Screen
-          name="Welcome" // Ruta pentru Welcome Screen
+          name="Welcome"
           component={WelcomeScreen}
           options={{ headerShown: false }}
         />
